@@ -16,8 +16,8 @@ def test_same_seed_produces_same_walls() -> None:
     generator_1: MazeGenerator = MazeGenerator(
         width=10,
         height=7,
-        entry=(0, 0),
-        exit=(9, 6),
+        entry_c=(0, 0),
+        exit_c=(9, 6),
         perfect=True,
         seed=123
     )
@@ -25,8 +25,8 @@ def test_same_seed_produces_same_walls() -> None:
     generator_2: MazeGenerator = MazeGenerator(
         width=10,
         height=7,
-        entry=(0, 0),
-        exit=(9, 6),
+        entry_c=(0, 0),
+        exit_c=(9, 6),
         perfect=True,
         seed=123
     )
