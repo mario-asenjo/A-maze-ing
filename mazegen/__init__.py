@@ -30,6 +30,8 @@ from .maze import (
     set_wall_between
 )
 
+from .generator import MazeGenerator
+
 __all__ = [
     "ALL_WALLS",
     "N",
@@ -49,5 +51,6 @@ __all__ = [
     "in_bounds",
     "neighbor_of",
     "set_wall",
-    "set_wall_between"
+    "set_wall_between",
+    "MazeGenerator"
 ]

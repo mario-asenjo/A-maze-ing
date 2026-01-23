@@ -22,8 +22,7 @@ def _new_grid(width: int, height: int) -> list[list[int]]:
 
 def test_set_wall_between_updates_both_sides() -> None:
     """
-
-    :return:
+    Opening shared wall must update both adjacent cells consistently.
     """
     walls = _new_grid(3, 3)
 
