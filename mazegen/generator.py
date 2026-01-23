@@ -6,6 +6,8 @@ using an iterative DFS (recursive backtracker).
 """
 
 
+from __future__ import annotations
+
 import random
 from typing import Final, Optional
 
@@ -20,6 +22,7 @@ from mazegen.maze import (
     iter_orthogonal_neighbors,
     set_wall_between
 )
+from mazegen.patterns import compute_pattern_closed_cells
 
 
 class MazeGenerator:
@@ -29,22 +32,23 @@ class MazeGenerator:
     This core generator is reusable and deterministic given a seed.
     """
 
-    __width: int
-    __height: int
-    __entry: Coord
-    __exit: Coord
-    __perfect: bool
-    __rng: random.Random
-    __used42: bool
-    __warnings: list[str]
+    _width: int
+    _height: int
+    _entry: Coord
+    _exit: Coord
+    _perfect: bool
+    _rng: random.Random
+    _used_42: bool
+    _warnings: list[str]
+    _include_42: bool
 
     def __init__(
             self,
             *,
             width: int,
             height: int,
-            entry: Coord,
-            exit: Coord,
+            entry_c: Coord,
+            exit_c: Coord,
             perfect: bool,
             seed: Optional[int] = None,
             include_42: bool = True
@@ -55,8 +59,8 @@ class MazeGenerator:
         Args:
             width: Maze width (columns).
             height: Maze height (rows).
-            entry: Entry coordinate (x, y).
-            exit: Exit coordinate (x, y).
+            entry_c: Entry coordinate (x, y).
+            exit_c: Exit coordinate (x, y).
             perfect: Whether the maze must be perfect (unique paths).
             seed: Random seed for reproducibility.
             include_42: Placeholder for future "42" insertion (Milestone 3).
@@ -69,43 +73,42 @@ class MazeGenerator:
                 "Arguments width and height must be positive integers."
             )
 
-        entry_x, entry_y = entry
-        exit_x, exit_y = exit
+        entry_x, entry_y = entry_c
+        exit_x, exit_y = exit_c
         if not in_bounds(entry_x, entry_y, width, height):
             raise MazeConfigError(
-                f"entry {entry} is out of bounds for {width} x {height}."
+                f"entry {entry_c} is out of bounds for {width} x {height}."
             )
         if not in_bounds(exit_x, exit_y, width, height):
             raise MazeConfigError(
-                f"exit {exit} is out of bounds for {width} x {height}."
+                f"exit {exit_c} is out of bounds for {width} x {height}."
             )
-        if entry == exit:
+        if entry_c == exit_c:
             raise MazeConfigError(
                 "entry and exit must be different coordinates."
             )
 
-        self.__width = width
-        self.__height = height
-        self.__entry = entry
-        self.__exit = exit
-        self.__perfect = perfect
-        self.__rng = random.Random(seed)
+        self._width = width
+        self._height = height
+        self._entry = entry_c
+        self._exit = exit_c
+        self._perfect = perfect
+        self._rng = random.Random(seed)
 
         # This will be implemented in Phase 3 of project flowchart.
-        self.__used42 = False
-        self.__warnings = []
-        if include_42:
-            pass
+        self._used_42 = False
+        self._warnings = []
+        self._include_42 = include_42
 
     @property
     def used_42(self) -> bool:
         """Return True if the last generated maze included the '42' pattern."""
-        return self.__used42
+        return self._used_42
 
     @property
     def last_warnings(self) -> list[str]:
         """Return warnings produced during the last generation attempt."""
-        return list(self.__warnings)
+        return list(self._warnings)
 
     def generate(self) -> Maze:
         """
@@ -117,18 +120,40 @@ class MazeGenerator:
         Raises:
             MazeGenerationError: If generation fails unexpectedly.
         """
+        if not self._perfect:
+            raise MazeGenerationError(
+                "Non-perfect generation is not implemented yet."
+            )
+
+        self._warnings = []
+        self._used_42 = False
+
         walls: list[list[int]] = [
-            [ALL_WALLS for _x in range(self.__width)]
-            for _y in range(self.__height)
+            [ALL_WALLS for _x in range(self._width)]
+            for _y in range(self._height)
         ]
 
-        # No closed cells yet (Phase 3 of project flowchart)
         closed: set[Coord] = set()
+        if self._include_42:
+            maybe_closed: set[Coord] | None = compute_pattern_closed_cells(
+                self._width,
+                self._height
+            )
+            if maybe_closed is None:
+                self._warnings.append(
+                    "Maze too small to include the 42 pattern "
+                    "(needs at least 7x5)."
+                )
+            else:
+                closed = maybe_closed
+                self._used_42 = True
+                for x, y in closed:
+                    walls[y][x] = ALL_WALLS
 
         # Choose start: entry is a good deterministic anchor.
-        start: Final[Coord] = self.__entry
+        start: Final[Coord] = self._entry
         if start in closed:
-            raise MazeGenerationError("Entry cannot be in a closed cell.")
+            raise MazeGenerationError("Entry canno t be in a closed cell.")
 
         visited: set[Coord] = {start}
         stack: list[Coord] = [start]
@@ -141,8 +166,8 @@ class MazeGenerator:
             for _d, (next_x, next_y) in iter_orthogonal_neighbors(
                     cell_x,
                     cell_y,
-                    self.__width,
-                    self.__height
+                    self._width,
+                    self._height
             ):
                 neighbor = (next_x, next_y)
                 if neighbor in closed:
@@ -154,7 +179,7 @@ class MazeGenerator:
                 stack.pop()
                 continue
 
-            nxt_candidate = self.__rng.choice(candidates)
+            nxt_candidate = self._rng.choice(candidates)
             set_wall_between(
                 walls,
                 (cell_x, cell_y),
@@ -168,16 +193,17 @@ class MazeGenerator:
         ensure_outer_borders_closed(walls)
         assert_neighbor_wall_consistency(walls)
 
-        if len(visited) != (self.__width * self.__height):
+        target: int = self._width * self._height - len(closed)
+        if len(visited) != target:
             raise MazeGenerationError(
                 "Not all cells were reached during generation of Maze."
             )
 
         return Maze(
-            width=self.__width,
-            height=self.__height,
+            width=self._width,
+            height=self._height,
             walls=walls,
-            entry=self.__entry,
-            exit=self.__exit,
+            entry=self._entry,
+            exit=self._exit,
             closed=closed
         )
