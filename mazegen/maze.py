@@ -36,6 +36,7 @@ OPPOSITE: Final[Mapping[Direction, Direction]] = {
     "W": "E"
 }
 
+
 @dataclass(frozen=True, slots=True)
 class Maze:
     """
@@ -49,7 +50,6 @@ class Maze:
         exit: Exit coordinate (x, y).
         closed: Coordinates that are not walkable (e.g., the "42" pattern).
     """
-
     width: int
     height: int
     walls: list[list[int]]
@@ -70,7 +70,9 @@ def neighbor_of(x: int, y: int, direction: Direction) -> Coord:
 
 
 def has_wall(cell: int, direction: Direction) -> bool:
-    """Return True if the given direction wall is closed in the cell bitmask."""
+    """
+    Return True if the given direction wall is closed in the cell bitmask.
+    """
     bit = DIR_TO_BIT[direction]
     return (cell & bit) != 0
 
@@ -90,13 +92,15 @@ def set_wall(cell: int, direction: Direction, *, closed: bool) -> int:
     return cell & ~bit
 
 
-def iter_orthogonal_neighbors(x: int,
-                              y: int,
-                              width: int,
-                              height: int
-                              ) -> Iterable[tuple[Direction, Coord]]:
+def iter_orthogonal_neighbors(
+        x: int,
+        y: int,
+        width: int,
+        height: int
+) -> Iterable[tuple[Direction, Coord]]:
     """
-    Yield valid (direction, neighbor_coord) for orthogonal neighbors inside bounds.
+    Yield valid (direction, neighbor_coord) for orthogonal neighbors inside
+    bounds.
     """
     for d in ("N", "E", "S", "W"):
         direction: Direction = d
@@ -117,7 +121,7 @@ def direction_between(a: Coord, b: Coord) -> Direction:
     dx = bx - ax
     dy = by - ay
 
-    ret_val: Direction | None = None
+    ret_val: Direction
 
     if dx == 0 and dy == -1:
         ret_val = "N"
@@ -128,4 +132,134 @@ def direction_between(a: Coord, b: Coord) -> Direction:
     elif dx == -1 and dy == 0:
         ret_val = "W"
     else:
-        raise MazeConfigError(f"Coordinates {a} and {b} are not orthogonal neighbors.")
+        raise MazeConfigError(
+            f"Coordinates {a} and {b} are not orthogonal neighbors."
+        )
+
+    return ret_val
+
+
+def set_wall_between(
+        walls: list[list[int]],
+        a: Coord,
+        b: Coord,
+        *,
+        closed: bool
+) -> None:
+    """
+    Set the wall between two orthogonal neighbor cells to closed/open,
+    consistently on both sides.
+
+    This is the *critical* helper that prevents the classic bug where one
+    side is opened but neighbor still thinks it's closed.
+
+    Args:
+        walls: 2D grid [y][x] of wall bitmasks.
+        a: First coordinate (x, y).
+        b: Second coordinate (x, y) (must be orthogonal neighbor of a).
+        closed: True closes the wall, False opens it.
+
+    Raises:
+        MazeConfigError: If coordinates are out of bounds or not neighbors.
+    """
+    height: int = len(walls)
+    if height == 0:
+        raise MazeConfigError("Walls grid must have at least 1 row.")
+    width: int = len(walls[0])
+    if any(len(row) != width for row in walls):
+        raise MazeConfigError("Walls grid must be rectangular.")
+
+    ax, ay = a
+    bx, by = b
+    if (not in_bounds(ax, ay, width, height)
+            or not in_bounds(bx, by, width, height)):
+        raise MazeConfigError(
+            f"Coordinates out of bounds: a={a}, "
+            f"b={b} for grid {width}x{height}."
+        )
+    d = direction_between(a, b)
+    od = OPPOSITE[d]
+
+    walls[ay][ax] = set_wall(walls[ay][ax], d, closed=closed)
+    walls[by][bx] = set_wall(walls[by][bx], od, closed=closed)
+
+
+def ensure_outer_borders_closed(walls: list[list[int]]) -> None:
+    """
+    Ensure all outer border walls are closed.
+
+    Even if internal carving is correct, explicitly enforcing borders prevents
+    accidental openings to "outside the grid", which is invalid per spec.
+    """
+    height: int = len(walls)
+    if height == 0:
+        return
+    width: int = len(walls[0])
+    if width == 0:
+        return
+    if any(len(row) != width for row in walls):
+        raise MazeConfigError("Walls grid must be rectangular.")
+
+    for x in range(width):
+        # Top Row - Close N
+        walls[0][x] = set_wall(walls[0][x], "N", closed=True)
+        # Bottom Row - Close S
+        walls[height - 1][x] = set_wall(
+            walls[height - 1][x],
+            "S",
+            closed=True
+        )
+
+    for y in range(height):
+        # Left col - Close W
+        walls[y][0] = set_wall(walls[y][0], "W", closed=True)
+        # Right col - Close E
+        walls[y][width - 1] = set_wall(walls[y][width - 1], "E", closed=True)
+
+
+def assert_neighbor_wall_consistency(walls: list[list[int]]) -> None:
+    """
+    Validate that neighboring cells agree on their shared wall encoding.
+
+    Raises:
+        MazeConfigError: If the grid is malformed or any inconsistency is
+        found.
+    """
+    height: int = len(walls)
+    if height == 0:
+        return
+    width: int = len(walls[0])
+    if any(len(row) != width for row in walls):
+        raise MazeConfigError("Walls grid must be rectangular.")
+
+    for y in range(height):
+        for x in range(width):
+            cell: int = walls[y][x]
+
+            # North neighbor: my N == neighbor's S
+            if y > 0:
+                north: int = walls[y - 1][x]
+                if has_wall(cell, "N") != has_wall(north, "S"):
+                    raise MazeConfigError(f"Inconsistent N/S wall at ({x},{y})"
+                                          f" and ({x},{y - 1}).")
+
+            # South neighbor: my S == neighbor's N
+            if y < height - 1:
+                south: int = walls[y + 1][x]
+                if has_wall(cell, "S") != has_wall(south, "N"):
+                    raise MazeConfigError(f"Inconsistent S/N wall at ({x},{y})"
+                                          f" and ({x},{y + 1}).")
+
+            # East neighbor: my E == neighbor's W
+            if x < width - 1:
+                east: int = walls[y][x + 1]
+                if has_wall(cell, "E") != has_wall(east, "W"):
+                    raise MazeConfigError(f"Inconsistent E/W wall at ({x},{y})"
+                                          f" and ({x + 1},{y}).")
+
+            # West neighbor: my W == neighbor's E
+            if x > 0:
+                west: int = walls[y][x - 1]
+                if has_wall(cell, "W") != has_wall(west, "E"):
+                    raise MazeConfigError(f"Inconsistent W/E wall at ({x},{y})"
+                                          f" and ({x - 1},{y}).")
