@@ -7,6 +7,10 @@ Each cell stores a 4-bit mask representing CLOSED walls in NSEW order:
 - bit2: South wall
 - bit3: West wall
 """
+
+
+from __future__ import annotations
+
 from dataclasses import dataclass
 from typing import Literal, Final, Mapping, Iterable
 

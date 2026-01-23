@@ -8,17 +8,26 @@ using an iterative DFS (recursive backtracker).
 
 from __future__ import annotations
 
+from collections import deque
 import random
-from typing import Final, Optional
+from typing import Final, Optional, Deque
 
-from mazegen.errors import MazeConfigError, MazeGenerationError
+from mazegen.errors import (
+    MazeConfigError,
+    MazeGenerationError,
+    MazeUnsolvableError
+)
+
 from mazegen.maze import (
     ALL_WALLS,
+    DIR_TO_DELTA,
     Coord,
+    Direction,
     Maze,
     assert_neighbor_wall_consistency,
     ensure_outer_borders_closed,
     in_bounds,
+    has_wall,
     iter_orthogonal_neighbors,
     set_wall_between
 )
@@ -153,7 +162,7 @@ class MazeGenerator:
         # Choose start: entry is a good deterministic anchor.
         start: Final[Coord] = self._entry
         if start in closed:
-            raise MazeGenerationError("Entry canno t be in a closed cell.")
+            raise MazeGenerationError("Entry cannot be in a closed cell.")
 
         visited: set[Coord] = {start}
         stack: list[Coord] = [start]
@@ -207,3 +216,89 @@ class MazeGenerator:
             exit=self._exit,
             closed=closed
         )
+
+    def solve(self, maze: Maze) -> str:
+        """
+        Solve the maze using BFS and return the sortest path as N/E/S/W string.
+
+        Raises:
+            MazeUnsolvableError: If no path exists between entry and exit.
+        """
+        start: Coord = maze.entry
+        goal: Coord = maze.exit
+
+        if start in maze.closed or goal in maze.closed:
+            raise MazeUnsolvableError("Entry or exit is in a closed cell.")
+
+        queue: Deque[Coord] = deque([start])
+        prev: dict[Coord, tuple[Coord, Direction]] = {}
+        seen: set[Coord] = {start}
+
+        while queue:
+            x, y = queue.popleft()
+            if (x, y) == goal:
+                break
+
+            cell_mask: int = maze.walls[y][x]
+            for d in ("N", "E", "S", "W"):
+                direction: Direction = d
+                if has_wall(cell_mask, direction):
+                    continue
+
+                dir_x, dir_y = DIR_TO_DELTA[direction]
+                next_x, next_y = x + dir_x, y + dir_y
+
+                if not in_bounds(next_x, next_y, maze.width, maze.height):
+                    continue
+
+                nxt: Coord = (next_x, next_y)
+                if nxt in maze.closed:
+                    continue
+                if nxt in seen:
+                    continue
+
+                seen.add(nxt)
+                prev[nxt] = ((x, y), direction)
+                queue.append(nxt)
+
+        if goal not in seen:
+            raise MazeUnsolvableError("No path exists between entry and exit.")
+
+        # Reconstruct path from goal -> start
+        steps: list[str] = []
+        cur = goal
+
+        while cur != start:
+            parent, move = prev[cur]
+            steps.append(move)
+            cur = parent
+        steps.reverse()
+        return "".join(steps)
+
+    def to_hex_lines(self, maze: Maze) -> list[str]:
+        """
+        Convert maze walls to the required hex grid representation.
+
+        Returns:
+        List of strings, one per row, each containing WIDTH hext digits.
+        """
+        lines: list[str] = []
+        for row in maze.walls:
+            lines.append("".join(format(cell, "x") for cell in row))
+        return lines
+
+    def build_output_sections(
+            self,
+            maze: Maze
+    ) -> tuple[list[str], str, str, str]:
+        """
+        Build the sections required by the output file format.
+
+        Returns:
+            (hex_lines, entry_line, exit_line, path_line)
+        """
+        hex_lines: list[str] = self.to_hex_lines(maze)
+        entry_line: str = f"{maze.entry[0]},{maze.entry[1]}"
+        exit_line: str = f"{maze.exit[0]},{maze.exit[1]}"
+        path_line = self.solve(maze)
+        return hex_lines, entry_line, exit_line, path_line
