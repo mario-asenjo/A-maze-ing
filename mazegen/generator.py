@@ -29,7 +29,7 @@ from mazegen.maze import (
     in_bounds,
     has_wall,
     iter_orthogonal_neighbors,
-    set_wall_between
+    set_wall_between, direction_between
 )
 from mazegen.patterns import compute_pattern_closed_cells
 
@@ -297,8 +297,66 @@ class MazeGenerator:
         Returns:
             (hex_lines, entry_line, exit_line, path_line)
         """
-        hex_lines: list[str] = self.to_hex_lines(maze)
+        hex_lines: list[str] = [
+            line.upper() for line in self.to_hex_lines(maze)
+        ]
         entry_line: str = f"{maze.entry[0]},{maze.entry[1]}"
         exit_line: str = f"{maze.exit[0]},{maze.exit[1]}"
         path_line = self.solve(maze)
         return hex_lines, entry_line, exit_line, path_line
+
+    @staticmethod
+    def _is_open_between(
+            walls: list[list[int]],
+            a: Coord,
+            b: Coord
+    ) -> bool:
+        """
+        Check if there is a wall between Coord a and Coord b.
+        """
+        direction: Direction = direction_between(a, b)
+        ax, ay = a
+        return not has_wall(walls[ax][ay], direction)
+
+    def _creates_open_3x3(
+            self,
+            walls: list[list[int]],
+            closed: set[Coord],
+            a: Coord,
+            b: Coord
+    ) -> bool:
+        """
+        Checks the 3x3 top-left wrapping zone around a and b.
+
+        Only checks cells close to afected cells in order to be
+        efficient.
+        """
+        ax, ay = a
+        bx, by = b
+
+        min_x = max(0, min(ax, bx) - 2)
+        max_x = min(self._width - 3, max(ax, bx))
+        min_y = max(0, min(ay, by) - 2)
+        max_y = min(self._height - 3, max(ay, by))
+
+        for y in range(min_y, max_y + 1):
+            for x in range(min_x, max_x + 1):
+                if self._is_3x3_fully_open(walls, closed, x, y):
+                    return True
+        return False
+
+    def _is_3x3_fully_open(
+            self,
+            walls: list[list[int]],
+            closed: set[Coord],
+            x0: int,
+            y0: int
+    ) -> bool:
+        """
+        Checks if there is closed inside range,
+        """
+        for yy in range(y0, y0 + 3):
+            for xx in range(x0, x0 + 3):
+                if (xx, yy) in closed:
+                    return False
+        return True

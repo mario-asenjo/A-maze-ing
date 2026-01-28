@@ -19,12 +19,12 @@ from mazegen.errors import MazeConfigError
 Coord = tuple[int, int]
 Direction = Literal["N", "E", "S", "W"]
 
-N: Final[int] = 1 << 0
-E: Final[int] = 1 << 1
-S: Final[int] = 1 << 2
-W: Final[int] = 1 << 3
+N: Final[int] = 1 << 0  # 0001
+E: Final[int] = 1 << 1  # 0010
+S: Final[int] = 1 << 2  # 0100
+W: Final[int] = 1 << 3  # 1000
 
-ALL_WALLS: Final[int] = N | E | S | W
+ALL_WALLS: Final[int] = N | E | S | W  # 1111
 
 DIR_TO_BIT: Final[Mapping[Direction, int]] = {"N": N, "E": E, "S": S, "W": W}
 DIR_TO_DELTA: Final[Mapping[Direction, tuple[int, int]]] = {
@@ -33,6 +33,7 @@ DIR_TO_DELTA: Final[Mapping[Direction, tuple[int, int]]] = {
     "S": (0, 1),
     "W": (-1, 0)
 }
+
 OPPOSITE: Final[Mapping[Direction, Direction]] = {
     "N": "S",
     "E": "W",
