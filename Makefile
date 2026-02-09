@@ -1,7 +1,6 @@
 PY=python3
 
-CODE_DIRS = mazegen \
-			tests
+CODE_DIRS = a_maze_ing.py src tests
 
 install:
 	$(PY) -m pip install -U pip

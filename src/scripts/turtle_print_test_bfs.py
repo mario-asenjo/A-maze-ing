@@ -23,9 +23,11 @@ path = output[3]
 ROWS = len(maze_rows)
 COLS = len(maze_rows[0])
 
+
 def parse_xy(s):
     x, y = s.split(",")
     return int(x), int(y)
+
 
 entrada = parse_xy(entrada_str)
 salida = parse_xy(salida_str)
@@ -46,7 +48,7 @@ CELL = max(2, int(min((W - 2*MARGIN) / COLS, (H - 2*MARGIN) / ROWS)))
 
 # centrado clásico (SIN setworldcoordinates)
 origin_x = -(COLS * CELL) / 2
-origin_y =  (ROWS * CELL) / 2
+origin_y = (ROWS * CELL) / 2
 
 pen = turtle.Turtle(visible=False)
 pen.speed(0)
@@ -60,16 +62,19 @@ walker.shapesize(0.3, 0.3)  # pequeño en grids grandes
 walker.penup()
 walker.speed(0)
 
+
 def cell_to_screen_center(x, y):
     sx = origin_x + x * CELL + CELL / 2
     sy = origin_y - y * CELL - CELL / 2
     return sx, sy
+
 
 def draw_wall(x1, y1, x2, y2):
     pen.goto(x1, y1)
     pen.pendown()
     pen.goto(x2, y2)
     pen.penup()
+
 
 def draw_cell_walls(x, y, hex_char):
     v = int(hex_char, 16)
@@ -90,12 +95,14 @@ def draw_cell_walls(x, y, hex_char):
     if south: draw_wall(left, bottom, right, bottom)
     if west:  draw_wall(left, top, left, bottom)
 
+
 def draw_maze():
     pen.color("black")
     for y in range(ROWS):
         row = maze_rows[y]
         for x in range(COLS):
             draw_cell_walls(x, y, row[x])
+
 
 def stamp_marker(x, y, color):
     marker = turtle.Turtle(visible=False)
