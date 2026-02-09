@@ -57,13 +57,15 @@ def parse_config(path: str) -> Config:
                         raise ValueError
                     return (int(parts[0]), int(parts[1]))
                 except ValueError:
-                    raise ValueError(f"Invalid format for {key}: '{val}' (Expected x,y)")
+                    raise ValueError(
+                        f"Invalid format for {key}: '{val}' "
+                        "(Expected x,y)")
 
             entry = parse_coord("ENTRY")
             exit_coord = parse_coord("EXIT")
 
             perfect_str = raw_data["PERFECT"].lower()
-            if perfect_str != ("true", "false"):
+            if perfect_str not in ("true", "false"):
                 raise ValueError("PERFECT needs to be 'true' or 'false'.")
             if perfect_str == "true":
                 perfect = True
