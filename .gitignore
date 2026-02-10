@@ -201,6 +201,9 @@ cython_debug/
 .cursorignore
 .cursorindexingignore
 
+# Exclude MiniLibX source and binaries
+minilibx/
+
 # Marimo
 marimo/_static/
 marimo/_lsp/
