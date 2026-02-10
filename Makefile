@@ -5,9 +5,11 @@ CODE_DIRS = a_maze_ing.py src tests
 install:
 	$(PY) -m pip install -U pip
 	$(PY) -m pip install -e .[dev]
+	# Linux-specific MLX flags
+	MLX_FLAGS = -Lminilibx -lmlx -lXext -lX11 -lm -lbsd
 
 run:
-	$(PY) a_maze_ing.py config.txt
+	PYTHONPATH=src LD_LIBRARY_PATH=./minilibx $(PY) a_maze_ing.py config.txt
 
 debug:
 	$(PY) -m pdb a_maze_ing.py config.txt

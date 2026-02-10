@@ -1,7 +1,7 @@
 import sys
 # from typing import NoReturn
 from src.app import parse_config
-from src.app.ui import start_ui
+from src.app.ui import MazeApp
 from mazegen.generator import MazeGenerator
 from mazegen.errors import MazeError
 from typing import cast, Any
@@ -24,11 +24,14 @@ def main() -> None:
             exit_c=config["exit"],
             perfect=config["perfect"]
         )
-        # Cast Config (TypedDict) to dict[str, Any] for start_ui
-        start_ui(gen, cast(dict[str, Any], config))
-        print(f"Validated config: {config['width']}x{config['height']}")
+        app = MazeApp(gen, config)
+        app.run()
     except MazeError as e:
         sys.stderr.write(f"Maze error: {e}\n")
+        sys.exit(1)
+    except RuntimeError as e:
+        # Handles MLX initialization or wrapper failures
+        sys.stderr.write(f"Runtime Error: {e}\n")
         sys.exit(1)
     except Exception as e:
         sys.stderr.write(f"Configuration Error: {e}\n")

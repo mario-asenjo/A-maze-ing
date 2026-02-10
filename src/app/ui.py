@@ -1,116 +1,103 @@
-import curses
+import ctypes
+from src.app.mlx_wrapper import MLXWrapper
 from typing import Any
 from src.mazegen.generator import MazeGenerator
-from src.mazegen.errors import MazeGenerationError
 from src.mazegen.maze import Maze, has_wall
 
 
-def render_maze_to_buffer(maze: Maze, show_path: bool, path_str: str = "") -> list[str]:
-    """
-    Converts the maze data into a list of strings for curses display.
-    
-    Each cell is represented by a 3x3 character area:
-    - Center: ' ' (Path) or '.' (Shortest Path)
-    - Edges: '|', '-', or '+' for walls [cite: 191]
-    """
-    # Create a buffer with spaces (3 characters per cell width/height)
-    buf_height = maze.height * 2 + 1
-    buf_width = maze.width * 2 + 1
-    buffer = [[" " for _ in range(buf_width)] for _ in range(buf_height)]
+class MazeApp:
+    def __init__(self, gen: MazeGenerator, config: dict[str, Any]) -> None:
+        self.wrapper = MLXWrapper()
+        self.mlx_ptr = self.wrapper.init()
+        
+        if not self.mlx_ptr:
+            # Handle error gracefully per mandatory part [cite: 116]
+            raise RuntimeError("Could not initialize MiniLibX. Is your DISPLAY set?")
 
-    # Draw the structural grid
-    for y in range(maze.height):
-        for x in range(maze.width):
-            cell = maze.walls[y][x]
-            by, bx = y * 2 + 1, x * 2 + 1
+        self.tile_size = 32
+        self.show_path = False
+        self.wall_color = 0xFFFFFF
             
-            # Place corner joints
-            buffer[by-1][bx-1] = "+"
-            buffer[by-1][bx+1] = "+"
-            buffer[by+1][bx-1] = "+"
-            buffer[by+1][bx+1] = "+"
+        self.win_ptr = self.wrapper.new_window(
+            self.mlx_ptr, 
+            config["width"] * 32, 
+            config["height"] * 32, 
+            "A-Maze-ing"
+        )
+        self.gen = gen
+        self.maze = gen.generate()
 
-            # Draw walls if bits are set [cite: 148, 151]
-            if has_wall(cell, "N"): buffer[by-1][bx] = "-"
-            if has_wall(cell, "S"): buffer[by+1][bx] = "-"
-            if has_wall(cell, "W"): buffer[by][bx-1] = "|"
-            if has_wall(cell, "E"): buffer[by][bx+1] = "|"
-            
-            # Special highlighting for "42" pattern cells [cite: 140, 196]
-            if (x, y) in maze.closed:
-                buffer[by][bx] = "X"
+    def _draw_pixel(self, x: int, y: int, color: int) -> None:
+        """Draws a single pixel using the MLX wrapper."""
+        self.wrapper.lib.mlx_pixel_put(self.mlx_ptr, self.win_ptr, x, y, color)
 
-    # Overlay shortest path if requested [cite: 194]
-    if show_path and path_str:
-        curr_x, curr_y = maze.entry
-        buffer[curr_y * 2 + 1][curr_x * 2 + 1] = "."
+    def _draw_line(self, x1: int, y1: int, x2: int, y2: int) -> None:
+        """Draws a line between two points (horizontal or vertical)."""
+        if x1 == x2:  # Vertical line
+            for y in range(min(y1, y2), max(y1, y2) + 1):
+                self._draw_pixel(x1, y, self.wall_color)
+        elif y1 == y2:  # Horizontal line
+            for x in range(min(x1, x2), max(x1, x2) + 1):
+                self._draw_pixel(x, y1, self.wall_color)
+
+    def _draw_rect(self, coord: tuple[int, int], color: int) -> None:
+        """Fills a tile with a specific color (used for Entry/Exit/42)."""
+        x_start, y_start = coord[0] * self.tile_size, coord[1] * self.tile_size
+        for y in range(y_start + 1, y_start + self.tile_size):
+            for x in range(x_start + 1, x_start + self.tile_size):
+                self._draw_pixel(x, y, color)
+
+    def render(self) -> None:
+        """Draw the walls, entry, exit, and path to the window."""
+        self.wrapper.lib.mlx_clear_window(self.mlx_ptr, self.win_ptr)
         
-        dirs = {"N": (0, -1), "S": (0, 1), "E": (1, 0), "W": (-1, 0)}
-        for step in path_str:
-            dx, dy = dirs[step]
-            # Mark the wall we passed through
-            buffer[curr_y * 2 + 1 + dy][curr_x * 2 + 1 + dx] = "."
-            curr_x, curr_y = curr_x + dx, curr_y + dy
-            # Mark the next cell
-            buffer[curr_y * 2 + 1][curr_x * 2 + 1] = "."
-
-    return ["".join(row) for row in buffer]
-
-
-def start_ui(gen: MazeGenerator, config: dict[str, Any]) -> None:
-    """Initialize curses and start the main interaction loop."""
-    curses.wrapper(lambda stdscr: ui_loop(stdscr, gen, config))
-    # lambda makes a one argument function take more arguments (3 here)
-
-
-def ui_loop(
-        stdscr: curses.window,
-        gen: MazeGenerator,
-        config: dict[str, Any]) -> None:
-    """Main UI event loop."""
-    curses.start_color()
-    curses.use_default_colors()
-    curses.init_pair(1, curses.COLOR_GREEN, -1)  # Walls
-    curses.init_pair(2, curses.COLOR_CYAN, -1)   # Path
-    curses.curs_set(0)  # Hide cursor
-
-    # Initial generation
-    maze = gen.generate()
-    if gen.last_warnings:
-        raise MazeGenerationError
-    show_path = False
-
-    while True:
-        stdscr.clear()
-
-        # UI requirements:
-        # 1. Display Maze
-        # 2. Toggle Shortest Path
-        # 3. Re-generate
-        # 4. Color rotation
-        
-        stdscr.addstr(0, 0, "A-MAZE-ING (v1.0) - Press 'q' to quit")
-        stdscr.addstr(1, 0, f"Size: {config['width']}x{config['height']} |"
-                      f" 'r': Regenerate | 'p': Toggle Path")
-        
-        # Inside your while True loop in ui_loop:
-        path_string = gen.solve(maze) if show_path else ""
-        maze_lines = render_maze_to_buffer(maze, show_path, path_string)
-
-        for i, line in enumerate(maze_lines):
-            # Ensure we don't draw outside terminal bounds
-            if i + 3 < curses.LINES:
-                stdscr.addstr(i + 3, 2, line)
+        for y in range(self.maze.height):
+            for x in range(self.maze.width):
+                cell_walls = self.maze.walls[y][x]
+                px, py = x * self.tile_size, y * self.tile_size
                 
-        stdscr.refresh()
-        key = stdscr.getch()
-        # Handle mandatory interaction: Color Rotation [cite: 195]
-        if key == ord('c'):
-            # Logic to cycle through curses.init_pair values
-            pass
-        if key == ord('q'):
-            break
-        elif key == ord('r'):
-            maze = gen.generate()
-        elif key == ord('p'):
-            show_path = not show_path
+                # Draw Walls based on bits: N(1), E(2), S(4), W(8)
+                if has_wall(cell_walls, "N"):
+                    self._draw_line(px, py, px + self.tile_size, py)
+                if has_wall(cell_walls, "E"):
+                    self._draw_line(
+                        px + self.tile_size,
+                        py, px + self.tile_size, py + self.tile_size)
+                # ... repeat for S and W ...
+
+        # Highlight Entry (Green) and Exit (Red) 
+        self._draw_rect(self.maze.entry, 0x00FF00)
+        self._draw_rect(self.maze.exit, 0xFF0000)
+
+    def handle_key(self, keycode: int) -> None:
+        """Handle mandatory interactions."""
+        if keycode == 53:  # ESC
+            exit(0)
+        elif keycode == 15:  # 'R' - Regenerate 
+            self.maze = self.gen.generate()
+        elif keycode == 35:  # 'P' - Toggle Path 
+            self.show_path = not self.show_path
+        elif keycode == 8:  # 'C' - Change Colors 
+            self.wall_color = 0x0000FF  # Cycle logic here
+        
+        self.render()
+
+    def run(self) -> None:
+            """
+            Starts the event loop.
+            Uses CFUNCTYPE to pass a valid function pointer to C.
+            """
+            # Define the C callback: int func(int keycode, void *param)
+            key_callback_type = ctypes.CFUNCTYPE(
+                ctypes.c_int, ctypes.c_int, ctypes.c_void_p
+            )
+            # Store the callback in an attribute to prevent Garbage Collection
+            self._key_callback = key_callback_type(self.handle_key)
+
+            # Pass the callback: (window_ptr, function_ptr, param_ptr)
+            self.wrapper.lib.mlx_key_hook(
+                self.win_ptr, self._key_callback, None
+            )
+            
+            self.render()
+            self.wrapper.lib.mlx_loop(self.mlx_ptr)
