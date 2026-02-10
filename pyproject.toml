@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}
 authors = [
-  {name = "Mario and Anais "}
+  {name = "Mario and Jose "}
 ]
 dependencies = []
 
@@ -25,7 +25,7 @@ dev = [
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["mazegen*"]
+include = ["mazegen*", "app*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -14,7 +14,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal, Final, Mapping, Iterable
 
-from mazegen.errors import MazeConfigError
+from src.mazegen.errors import MazeConfigError
 
 Coord = tuple[int, int]
 Direction = Literal["N", "E", "S", "W"]
