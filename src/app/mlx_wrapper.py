@@ -48,6 +48,11 @@ class MLXWrapper:
             ctypes.c_void_p, ctypes.c_int, ctypes.c_int, ctypes.c_int]
         self.lib.mlx_pixel_put.restype = ctypes.c_int
 
+        self.lib.mlx_string_put.argtypes = [
+            ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int, ctypes.c_int,
+            ctypes.c_int, ctypes.c_char_p]
+        self.lib.mlx_string_put.restype = ctypes.c_int
+
     def init(self) -> Optional[Any]:
         """Initialize the MLX connection."""
         return self.lib.mlx_init()

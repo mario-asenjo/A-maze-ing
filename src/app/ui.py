@@ -19,11 +19,11 @@ class MazeApp:
         self.show_path = False
         self.wall_color = 0xFFFFFF
         self.path_color = 0xFFFFFF
-
+        ui_height = 64
         self.win_ptr = self.wrapper.new_window(
             self.mlx_ptr,
             config["width"] * 32,
-            config["height"] * 32,
+            (config["height"] * 32) + ui_height,
             "A-Maze-ing"
         )
         self.gen = gen
@@ -76,6 +76,32 @@ class MazeApp:
         for y in range(start_y, start_y + size):
             for x in range(start_x, start_x + size):
                 self.wrapper.lib.mlx_pixel_put(self.mlx_ptr, self.win_ptr, x, y, color)
+    
+    def _draw_legend(self) -> None:
+        """Draws the control instructions at the bottom of the window."""
+        # Calculate the Y position starting after the maze grid
+        y_start = (self.maze.height * self.tile_size) + 20
+        text_color = 0xFFFFFF  # White text
+        
+        # Text strings to display
+        instructions = [
+            "ESC: Quit",
+            "C: Random Colors",
+            "P: Toggle Path",
+            "R: Regenerate Maze"
+        ]
+        
+        # Draw each line of text
+        for i, text in enumerate(instructions):
+            # We offset each line by 15 pixels vertically
+            self.wrapper.lib.mlx_string_put(
+                self.mlx_ptr, 
+                self.win_ptr, 
+                20,                # X position (left margin)
+                y_start + (i * 15), # Y position
+                text_color, 
+                text.encode('utf-8')
+            )
 
     def render(self) -> None:
         """Draw the walls, entry, exit, and path to the window."""
@@ -111,6 +137,7 @@ class MazeApp:
         # 3. Draw Entry/Exit LAST so they are on top
         self._draw_rect(self.maze.entry, 0x00FF00) # Green
         self._draw_rect(self.maze.exit, 0xFF0000)  # Red
+        self._draw_legend()
 
     def handle_key(self, keycode: int, param: Any) -> None:
         """Handle mandatory interactions."""
