@@ -1,16 +1,23 @@
 import ctypes
 import random
+from src.app.config_parser import Config
 from src.app.mlx_wrapper import MLXWrapper
 from typing import Any
 from src.mazegen.generator import MazeGenerator
 from src.mazegen.maze import has_wall
 
+# makefile minilibx inside make install
+# bigger needs to fin in screen
+# 42 in a different color
+# move the screen a keep seeing maze
+# add output file
+
 
 class MazeApp:
-    def __init__(self, gen: MazeGenerator, config: dict[str, Any]) -> None:
+    def __init__(self, gen: MazeGenerator, config: Config) -> None:
         self.wrapper = MLXWrapper()
         self.mlx_ptr = self.wrapper.init()
-        
+
         if not self.mlx_ptr:
             raise RuntimeError(
                 "Could not initialize MiniLibX. Is your DISPLAY set?")
@@ -71,12 +78,15 @@ class MazeApp:
 
         # Calculate top-left corner of the path "dot"
         # This centers a 10x10 square inside a 32x32 cell
-        start_x = (cell_x * self.tile_size) + (self.tile_size // 2) - (size // 2)
-        start_y = (cell_y * self.tile_size) + (self.tile_size // 2) - (size // 2)
+        start_x = (cell_x * self.tile_size)
+        + (self.tile_size // 2) - (size // 2)
+        start_y = (cell_y * self.tile_size)
+        + (self.tile_size // 2) - (size // 2)
 
         for y in range(start_y, start_y + size):
             for x in range(start_x, start_x + size):
-                self.wrapper.lib.mlx_pixel_put(self.mlx_ptr, self.win_ptr, x, y, color)
+                self.wrapper.lib.mlx_pixel_put(
+                    self.mlx_ptr, self.win_ptr, x, y, color)
 
     def _draw_legend(self) -> None:
         """Draws a professional UI panel with status indicators."""
@@ -87,12 +97,15 @@ class MazeApp:
         # Filling the bottom area with a subtle charcoal grey
         for y in range(maze_bottom, maze_bottom + panel_height):
             for x in range(self.maze.width * self.tile_size):
-                self.wrapper.lib.mlx_pixel_put(self.mlx_ptr, self.win_ptr, x, y, 0x1A1A1A)
+                self.wrapper.lib.mlx_pixel_put(
+                    self.mlx_ptr,
+                    self.win_ptr, x, y, 0x1A1A1A)
 
         # 2. DRAW THE SEPARATOR BORDER
         # A thin line to separate the maze from the menu
         for x in range(self.maze.width * self.tile_size):
-            self.wrapper.lib.mlx_pixel_put(self.mlx_ptr, self.win_ptr, x, maze_bottom, 0x444444)
+            self.wrapper.lib.mlx_pixel_put(
+                self.mlx_ptr, self.win_ptr, x, maze_bottom, 0x444444)
 
         # 3. DEFINE COLORS AND TEXT
         white = 0xFFFFFF
@@ -105,19 +118,28 @@ class MazeApp:
 
         # 4. RENDER COLUMNS
         # Column 1: Navigation
-        self.wrapper.lib.mlx_string_put(self.mlx_ptr, self.win_ptr, 20, y_text, white, b"ESC -> EXIT")
-        self.wrapper.lib.mlx_string_put(self.mlx_ptr, self.win_ptr, 20, y_text + 20, white, b"R   -> REGEN")
+        self.wrapper.lib.mlx_string_put(
+            self.mlx_ptr, self.win_ptr, 20, y_text, white, b"ESC -> EXIT")
+        self.wrapper.lib.mlx_string_put(
+            self.mlx_ptr, self.win_ptr, 20, y_text + 20, white,
+            b"R   -> REGEN")
 
         # Column 2: Visuals
-        self.wrapper.lib.mlx_string_put(self.mlx_ptr, self.win_ptr, 160, y_text, white, b"C   -> COLOR")
-        self.wrapper.lib.mlx_string_put(self.mlx_ptr, self.win_ptr, 160, y_text + 20, white, b"P   -> PATH")
+        self.wrapper.lib.mlx_string_put(self.mlx_ptr, self.win_ptr,
+                                        160, y_text, white, b"C   -> COLOR")
+        self.wrapper.lib.mlx_string_put(self.mlx_ptr, self.win_ptr,
+                                        160, y_text + 20,
+                                        white, b"P   -> PATH")
 
         # Column 3: Live Stats
-        self.wrapper.lib.mlx_string_put(self.mlx_ptr, self.win_ptr, 320, y_text, grey, b"PATH:")
-        self.wrapper.lib.mlx_string_put(self.mlx_ptr, self.win_ptr, 380, y_text, path_color, path_status)
+        self.wrapper.lib.mlx_string_put(self.mlx_ptr, self.win_ptr,
+                                        320, y_text, grey, b"PATH:")
+        self.wrapper.lib.mlx_string_put(self.mlx_ptr, self.win_ptr,
+                                        380, y_text, path_color, path_status)
 
         size_info = f"SIZE: {self.maze.width}x{self.maze.height}".encode()
-        self.wrapper.lib.mlx_string_put(self.mlx_ptr, self.win_ptr, 320, y_text + 20, grey, size_info)
+        self.wrapper.lib.mlx_string_put(self.mlx_ptr, self.win_ptr, 320,
+                                        y_text + 20, grey, size_info)
 
     def render(self) -> None:
         """Draw the walls, entry, exit, and path to the window."""
@@ -199,6 +221,14 @@ class MazeApp:
         Starts the event loop.
         Uses CFUNCTYPE to pass a valid function pointer to C.
         """
+        output_content = self.gen.build_output_sections(self.gen.generate())
+        # print(output_content)
+        with open("output_maze.txt", 'w') as f:
+            for line in output_content[0]:
+                f.write(line + "\n")
+            f.write("\n" + output_content[1])
+            f.write("\n" + output_content[2])
+            f.write("\n" + output_content[3] + "\n")
 
         key_callback_type = ctypes.CFUNCTYPE(
             ctypes.c_int,
@@ -211,7 +241,8 @@ class MazeApp:
         )
 
         # Hook for the "X" Close Button (Event 17)
-        # We use the same callback function; the keycode passed will be different
+        # We use the same callback function;
+        # the keycode passed will be different
         self.wrapper.lib.mlx_hook(
             self.win_ptr, 17, 0, self._key_callback, None
         )

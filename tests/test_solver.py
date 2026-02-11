@@ -9,8 +9,8 @@ from __future__ import annotations
 
 from collections import deque
 from typing import Deque, cast
-from mazegen import MazeGenerator
-from mazegen.maze import (
+from src.mazegen import MazeGenerator
+from src.mazegen.maze import (
     DIR_TO_DELTA,
     Direction,
     has_wall,

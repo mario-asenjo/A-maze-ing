@@ -5,7 +5,7 @@ CODE_DIRS = a_maze_ing.py src tests
 install:
 	$(PY) -m pip install -U pip
 	$(PY) -m pip install -e .[dev]
-	# Linux-specific MLX flags
+	# make minilibx here 
 	MLX_FLAGS = -Lminilibx -lmlx -lXext -lX11 -lm -lbsd
 
 run:

@@ -1,10 +1,8 @@
 import sys
-# from typing import NoReturn
 from src.app import parse_config
 from src.app.ui import MazeApp
-from mazegen.generator import MazeGenerator
-from mazegen.errors import MazeError
-from typing import cast, Any
+from src.mazegen.generator import MazeGenerator
+from src.mazegen.errors import MazeError
 
 
 def main() -> None:

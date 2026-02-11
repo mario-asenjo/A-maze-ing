@@ -12,13 +12,13 @@ from collections import deque
 import random
 from typing import Final, Optional, Deque
 
-from mazegen.errors import (
+from src.mazegen.errors import (
     MazeConfigError,
     MazeGenerationError,
     MazeUnsolvableError
 )
 
-from mazegen.maze import (
+from src.mazegen.maze import (
     ALL_WALLS,
     DIR_TO_DELTA,
     Coord,
@@ -31,7 +31,7 @@ from mazegen.maze import (
     iter_orthogonal_neighbors,
     set_wall_between, direction_between
 )
-from mazegen.patterns import compute_pattern_closed_cells
+from src.mazegen.patterns import compute_pattern_closed_cells
 
 
 class MazeGenerator:
