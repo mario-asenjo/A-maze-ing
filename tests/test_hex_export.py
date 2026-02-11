@@ -5,7 +5,7 @@ This test validates the exporting part of the core in hexadecimal format.
 
 from __future__ import annotations
 
-from mazegen import MazeGenerator, Maze
+from src.mazegen import MazeGenerator, Maze
 
 
 def test_hex_lines_dimensions() -> None:
