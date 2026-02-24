@@ -16,7 +16,7 @@ install:
 	@if [ ! -d "$(MLX_DIR)" ]; then \
 		git clone $(MLX_URL) $(MLX_DIR); \
 	fi
-	@sudo apt-get update && sudo apt-get install -y libx11-dev libxext-dev libbsd-dev
+	@apt-get update && apt-get install -y libx11-dev libxext-dev libbsd-dev
 	
 	@echo "Configuring MiniLibX..."
 	@cd $(MLX_DIR) && ./configure
