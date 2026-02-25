@@ -1,4 +1,6 @@
 PY=python3
+VENV=.venv
+BIN=$(VENV)/bin
 
 CODE_DIRS = a_maze_ing.py src tests
 
@@ -8,15 +10,15 @@ MLX_URL = https://github.com/42Paris/minilibx-linux.git
 
 
 install:
-	@echo "--- Creating Python Enviroment ---"
-	$(PY) -m pip install -U pip
-	$(PY) -m pip install -e .[dev]
+	@echo "--- 1. Creating/Updating Virtual Environment ---"
+	@if [ ! -d "$(VENV)" ]; then $(PY) -m venv $(VENV); fi
+	@$(BIN)/pip install -U pip
+	@$(BIN)/pip install -e .[dev]
 
 	@echo "--- 2. Setting up MiniLibX (Linux) ---"
 	@if [ ! -d "$(MLX_DIR)" ]; then \
 		git clone $(MLX_URL) $(MLX_DIR); \
 	fi
-	@apt-get update && apt-get install -y libx11-dev libxext-dev libbsd-dev
 	
 	@echo "Configuring MiniLibX..."
 	@cd $(MLX_DIR) && ./configure
@@ -31,7 +33,7 @@ install:
 	@echo "--- Setup Complete! ---"
 
 run:
-	PYTHONPATH=src LD_LIBRARY_PATH=$(MLX_DIR) $(PY) a_maze_ing.py config.txt
+	PYTHONPATH=src LD_LIBRARY_PATH=$(MLX_DIR) $(BIN)/python3 a_maze_ing.py config.txt
 
 debug:
 	$(PY) -m pdb a_maze_ing.py config.txt
