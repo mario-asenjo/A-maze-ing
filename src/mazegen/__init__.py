@@ -32,6 +32,11 @@ from .maze import (
 
 from .generator import MazeGenerator
 
+
+__version__ = "1.0.0"
+__author__ = "Mario Asenjo Pérez"
+
+
 __all__ = [
     "ALL_WALLS",
     "N",

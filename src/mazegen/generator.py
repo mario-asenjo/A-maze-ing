@@ -129,10 +129,6 @@ class MazeGenerator:
         Raises:
             MazeGenerationError: If generation fails unexpectedly.
         """
-        if not self._perfect:
-            raise MazeGenerationError(
-                "Non-perfect generation is not implemented yet."
-            )
 
         self._warnings = []
         self._used_42 = False
@@ -197,6 +193,9 @@ class MazeGenerator:
             )
             visited.add(nxt_candidate)
             stack.append(nxt_candidate)
+
+        if not self._perfect:
+            self._add_loops(walls, closed)
 
         # Enforce borders and validate consistency
         ensure_outer_borders_closed(walls)
@@ -316,7 +315,7 @@ class MazeGenerator:
         """
         direction: Direction = direction_between(a, b)
         ax, ay = a
-        return not has_wall(walls[ax][ay], direction)
+        return not has_wall(walls[ay][ax], direction)
 
     def _creates_open_3x3(
             self,
@@ -328,7 +327,7 @@ class MazeGenerator:
         """
         Checks the 3x3 top-left wrapping zone around a and b.
 
-        Only checks cells close to afected cells in order to be
+        Only checks cells close to affected cells in order to be
         efficient.
         """
         ax, ay = a
@@ -352,11 +351,76 @@ class MazeGenerator:
             x0: int,
             y0: int
     ) -> bool:
-        """
-        Checks if there is closed inside range,
-        """
+        """Check for 3x3 completely open areas."""
+        # First we search for closed cells, wouldn't count as "plaza".
         for yy in range(y0, y0 + 3):
             for xx in range(x0, x0 + 3):
                 if (xx, yy) in closed:
                     return False
+
+        # All inner connections should be opened.
+        # Horizontal checks
+        for yy in range(y0, y0 + 3):
+            for xx in range(x0, x0 + 2):
+                if has_wall(walls[yy][xx], "E"):
+                    return False
+                if has_wall(walls[yy][xx + 1], "W"):
+                    return False
+        # Vertical checks
+        for yy in range(y0, y0 + 2):
+            for xx in range(x0, x0 + 3):
+                if has_wall(walls[yy][xx], "S"):
+                    return False
+                if has_wall(walls[yy + 1][xx], "N"):
+                    return False
         return True
+
+    def _add_loops(self, walls: list[list[int]], closed: set[Coord]) -> None:
+        """
+
+        :param walls:
+        :param closed:
+        :return:
+        """
+
+        # Minimal number of extra walls, proportional to walkable size.
+        walkable = self._width * self._height - len(closed)
+        extra_edges = max(1, walkable // 25)  # Around ~4% loops, adjustable
+        attempts = extra_edges * 30
+
+        while extra_edges > 0 and attempts > 0:
+            attempts -= 1
+
+            x = self._rng.randrange(self._width)
+            y = self._rng.randrange(self._height)
+            a: Coord = (x, y)
+
+            if a not in closed:
+                # Choose random neighbor
+                neighbors: list[Coord] = []
+                for _d, (nx, ny) in iter_orthogonal_neighbors(
+                        x, y, self._width, self._height
+                ):
+                    b: Coord = (nx, ny)
+                    if b not in closed:
+                        neighbors.append(b)
+
+                if neighbors:
+                    b = self._rng.choice(neighbors)
+
+                    # If already open, does not add any value
+                    if not self._is_open_between(walls, a, b):
+                        # we try to open a wall
+                        set_wall_between(walls, a, b, closed=False)
+
+                        # if we have created a 3x3 open area, we revert
+                        if not self._creates_open_3x3(walls, closed, a, b):
+                            extra_edges -= 1
+                        else:
+                            set_wall_between(walls, a, b, closed=True)
+
+        if extra_edges > 0:
+            self._warnings.append(
+                "Could not add requested loops without "
+                " violating 3x3-open constraints."
+            )
