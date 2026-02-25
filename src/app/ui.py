@@ -24,12 +24,14 @@ class MazeApp:
 
         # 3. Calculate Final Dimensions
         maze_pixel_w = config["width"] * self.tile_size
-        
-        # The window width is either the maze width OR the minimum required for the UI
+
+        # The window width is either the maze width
+        # OR the minimum required for the UI
         self.win_width = max(maze_pixel_w, MIN_W)
         self.win_height = (config["height"] * self.tile_size) + ui_height
 
-        # Calculate Offset to center the maze if the window is wider than the maze
+        # Calculate Offset to center the maze
+        # if the window is wider than the maze
         self.offset_x = (self.win_width - maze_pixel_w) // 2
 
         self.win_ptr = self.wrapper.new_window(
@@ -57,7 +59,8 @@ class MazeApp:
     def _put_pixel_to_img(self, x: int, y: int, color: int) -> None:
         """Writes a pixel directly to the image buffer memory."""
         if 0 <= x < self.win_width and 0 <= y < self.win_height:
-            # Calculate memory offset: (y * line_length) + (x * bits_per_pixel / 8)
+            # Calculate memory offset:
+            # (y * line_length) + (x * bits_per_pixel / 8)
             # For most Linux systems, it's 4 bytes per pixel (BGRA)
             offset = (y * self.win_width * 4) + (x * 4)
             ctypes.c_uint32.from_address(self.img_data + offset).value = color
@@ -130,35 +133,49 @@ class MazeApp:
         # A thin line to separate the maze from the menu
         for x in range(self.maze.width * self.tile_size):
             self._put_pixel_to_img(x, maze_bottom, 0x444444)
-    
+
     def _draw_legend_text(self) -> None:
         """Puts the actual text strings on top of the rendered image."""
         maze_bottom = self.maze.height * self.tile_size
         white, grey = 0xFFFFFF, 0x888888
         y_text = maze_bottom + 25
-        
+
         # Status logic
         path_status = b"ON" if self.show_path else b"OFF"
         path_color = 0x00FF00 if self.show_path else 0xFF0000
 
         # Render Columns
-        self.wrapper.lib.mlx_string_put(self.mlx_ptr, self.win_ptr, 20, y_text, white, b"ESC -> EXIT")
-        self.wrapper.lib.mlx_string_put(self.mlx_ptr, self.win_ptr, 20, y_text + 20, white, b"R   -> REGEN")
-        
-        self.wrapper.lib.mlx_string_put(self.mlx_ptr, self.win_ptr, 160, y_text, white, b"C   -> COLOR")
-        self.wrapper.lib.mlx_string_put(self.mlx_ptr, self.win_ptr, 160, y_text + 20, white, b"P   -> PATH")
+        self.wrapper.lib.mlx_string_put(
+            self.mlx_ptr, self.win_ptr, 20, y_text, white, b"ESC -> EXIT"
+        )
+        self.wrapper.lib.mlx_string_put(
+            self.mlx_ptr, self.win_ptr, 20, y_text + 20, white, b"R   -> REGEN"
+        )
 
-        self.wrapper.lib.mlx_string_put(self.mlx_ptr, self.win_ptr, 320, y_text, grey, b"PATH:")
-        self.wrapper.lib.mlx_string_put(self.mlx_ptr, self.win_ptr, 380, y_text, path_color, path_status)
+        self.wrapper.lib.mlx_string_put(
+            self.mlx_ptr, self.win_ptr, 160, y_text, white, b"C   -> COLOR"
+        )
+        self.wrapper.lib.mlx_string_put(
+            self.mlx_ptr, self.win_ptr, 160, y_text + 20, white, b"P   -> PATH"
+        )
+
+        self.wrapper.lib.mlx_string_put(
+            self.mlx_ptr, self.win_ptr, 320, y_text, grey, b"PATH:"
+        )
+        self.wrapper.lib.mlx_string_put(
+            self.mlx_ptr, self.win_ptr, 380, y_text, path_color, path_status
+        )
 
         size_info = f"SIZE: {self.maze.width}x{self.maze.height}".encode()
-        self.wrapper.lib.mlx_string_put(self.mlx_ptr, self.win_ptr, 320, y_text + 20, grey, size_info)
+        self.wrapper.lib.mlx_string_put(
+            self.mlx_ptr, self.win_ptr, 320, y_text + 20, grey, size_info
+        )
 
     def render(self) -> None:
         """Draw the walls, entry, exit, and path to the window."""
         # clear the buffer and not the window
         ctypes.memset(self.img_data, 0, self.win_width * self.win_height * 4)
-        # 1. Draw Entry/Exit 
+        # 1. Draw Entry/Exit
         self._draw_rect(self.maze.entry, 0x00FF00)  # Green
         self._draw_rect(self.maze.exit, 0xFF0000)  # Red
 
@@ -197,7 +214,7 @@ class MazeApp:
                 curr_y += dy
                 dot_size = max(2, self.tile_size // 3)
                 self._draw_rect_at(curr_x, curr_y, dot_size, self.path_color)
-            
+
             # to stop at the end
             if self.path_step < len(path_str):
                 self.path_step += 1
@@ -269,8 +286,13 @@ class MazeApp:
         # NEW: The Loop Hook (Animation)
         # We create a simple wrapper that just calls render
         loop_callback_type = ctypes.CFUNCTYPE(ctypes.c_int, ctypes.c_void_p)
-        self._loop_callback = loop_callback_type(lambda x: (self.render(), 0)[1])
-        
+
+        def _loop_cb(_arg: object) -> int:
+            self.render()
+            return 0
+
+        self._loop_callback = loop_callback_type(_loop_cb)
+
         self.wrapper.lib.mlx_loop_hook(self.mlx_ptr, self._loop_callback, None)
 
         self.render()

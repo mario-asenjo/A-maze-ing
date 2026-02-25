@@ -12,27 +12,28 @@ class MLXWrapper:
         if not os.path.exists(lib_path):
             raise RuntimeError(f"MLX binary not found at {lib_path}")
 
-        # 1 load library (CDLL for linux + path with .so needed)
         self.lib = ctypes.CDLL(lib_path)
-        # https://docs.python.org/3/library/ctypes.html
 
         # Define Return/Arg types for strict validation
         self.lib.mlx_init.restype = ctypes.c_void_p
 
         self.lib.mlx_new_window.argtypes = [
-            ctypes.c_void_p, ctypes.c_int, ctypes.c_int, ctypes.c_char_p]
+            ctypes.c_void_p, ctypes.c_int, ctypes.c_int, ctypes.c_char_p
+        ]
         self.lib.mlx_new_window.restype = ctypes.c_void_p
 
         self.lib.mlx_clear_window.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
         self.lib.mlx_clear_window.restype = ctypes.c_int
 
-        self.lib.mlx_destroy_window.argtypes = [ctypes.c_void_p,
-                                                ctypes.c_void_p]
+        self.lib.mlx_destroy_window.argtypes = [
+            ctypes.c_void_p, ctypes.c_void_p]
 
         self.lib.mlx_destroy_display.argtypes = [ctypes.c_void_p]
 
-        self.lib.mlx_key_hook.argtypes = [ctypes.c_void_p, ctypes.c_void_p,
-                                          ctypes.c_void_p]
+        # mlx_key_hook(void *win_ptr, int (*funct_ptr)(), void *param)
+        self.lib.mlx_key_hook.argtypes = [
+            ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p
+        ]
         self.lib.mlx_key_hook.restype = ctypes.c_int
 
         self.lib.mlx_hook.argtypes = [
@@ -42,7 +43,6 @@ class MLXWrapper:
 
         self.lib.mlx_loop.argtypes = [ctypes.c_void_p]
         self.lib.mlx_loop.restype = ctypes.c_int
-
         self.lib.mlx_pixel_put.argtypes = [
             ctypes.c_void_p,
             ctypes.c_void_p, ctypes.c_int, ctypes.c_int, ctypes.c_int]
@@ -53,8 +53,9 @@ class MLXWrapper:
             ctypes.c_int, ctypes.c_char_p]
         self.lib.mlx_string_put.restype = ctypes.c_int
 
-        self.lib.mlx_new_image.argtypes = [ctypes.c_void_p, ctypes.c_int,
-                                           ctypes.c_int]
+        self.lib.mlx_new_image.argtypes = [
+            ctypes.c_void_p, ctypes.c_int, ctypes.c_int
+        ]
         self.lib.mlx_new_image.restype = ctypes.c_void_p
 
         self.lib.mlx_get_data_addr.argtypes = [ctypes.c_void_p,
@@ -63,24 +64,24 @@ class MLXWrapper:
                                                ctypes.POINTER(ctypes.c_int)]
         self.lib.mlx_get_data_addr.restype = ctypes.c_void_p
 
-        self.lib.mlx_put_image_to_window.argtypes = [ctypes.c_void_p,
-                                                     ctypes.c_void_p,
-                                                     ctypes.c_void_p,
-                                                     ctypes.c_int,
-                                                     ctypes.c_int]
+        self.lib.mlx_put_image_to_window.argtypes = [
+            ctypes.c_void_p,
+            ctypes.c_void_p,
+            ctypes.c_void_p,
+            ctypes.c_int,
+            ctypes.c_int
+        ]
         self.lib.mlx_put_image_to_window.restype = ctypes.c_int
 
     def init(self) -> Optional[Any]:
         """Initialize the MLX connection."""
         return self.lib.mlx_init()
 
-    def new_window(self,
-                   mlx_ptr: Any,
-                   width: int,
-                   height: int,
-                   title: str) -> Any:
+    def new_window(
+        self, mlx_ptr: Any, width: int, height: int, title: str
+    ) -> Any:
         """Create a new graphical window."""
-        return self.lib.mlx_new_window(mlx_ptr,
-                                       width, height, title.encode('utf-8'))
-
-    # why theses 2 functions
+        # title.encode is required for c_char_p
+        return self.lib.mlx_new_window(
+            mlx_ptr, width, height, title.encode('utf-8')
+        )

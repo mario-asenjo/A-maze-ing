@@ -398,7 +398,9 @@ class MazeGenerator:
             if a not in closed:
                 # Choose random neighbor
                 neighbors: list[Coord] = []
-                for _d, (nx, ny) in iter_orthogonal_neighbors(x, y, self._width, self._height):
+                for _d, (nx, ny) in iter_orthogonal_neighbors(
+                        x, y, self._width, self._height
+                ):
                     b: Coord = (nx, ny)
                     if b not in closed:
                         neighbors.append(b)
@@ -419,5 +421,6 @@ class MazeGenerator:
 
         if extra_edges > 0:
             self._warnings.append(
-                "Could not add requested loops without  violating 3x3-open constraints."
+                "Could not add requested loops without "
+                " violating 3x3-open constraints."
             )

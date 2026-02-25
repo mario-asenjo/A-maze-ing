@@ -5,14 +5,15 @@
 from __future__ import annotations
 
 from src.mazegen import MazeGenerator
-from src.mazegen.maze import has_wall
+from src.mazegen.maze import has_wall, Maze
 
-def _count_open_edges(maze) -> int:
+
+def _count_open_edges(maze: Maze) -> int:
     edges = 0
 
     for y in range(maze.height):
         for x in range(maze.width):
-            if (x, y) not in maze.walls:
+            if (x, y) not in maze.closed:
                 cell = maze.walls[y][x]
                 # Count only "E" and "S" so we don't duplicate
                 if x + 1 < maze.width and (x + 1, y) not in maze.closed:
@@ -22,6 +23,7 @@ def _count_open_edges(maze) -> int:
                     if not has_wall(cell, "S"):
                         edges += 1
     return edges
+
 
 def test_nonperfect_adds_cycles() -> None:
     gen = MazeGenerator(

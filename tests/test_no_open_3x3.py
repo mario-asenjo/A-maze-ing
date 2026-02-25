@@ -5,9 +5,10 @@
 from __future__ import annotations
 
 from src.mazegen import MazeGenerator
-from src.mazegen.maze import has_wall
+from src.mazegen.maze import has_wall, Maze
 
-def _is_3x3_fully_open(maze, x0: int, y0: int) -> bool:
+
+def _is_3x3_fully_open(maze: Maze, x0: int, y0: int) -> bool:
     for yy in range(y0, y0 + 3):
         for xx in range(x0, x0 + 3):
             if (xx, yy) in maze.closed:
