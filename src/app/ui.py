@@ -13,7 +13,7 @@ class MazeApp:
         self.mlx_ptr = self.wrapper.init()
 
         # 1. Calculate dynamic tile size to stay within screen limits
-        # We assume 1200x800 as a "safe" maximum window size
+        # We assume 1200x800 as maximum window size
         MAX_W, MAX_H = 1200, 800
         MIN_W = 500
         ui_height = 64
@@ -38,7 +38,7 @@ class MazeApp:
             self.mlx_ptr, self.win_width, self.win_height, "A-Maze-ing"
         )
 
-        # 3. Setup Buffer for these exact dimensions
+        # 3. Setup Buffer for these exact dimensions == to draw in RAM
         self.img_ptr = self.wrapper.lib.mlx_new_image(
             self.mlx_ptr, self.win_width, self.win_height
         )
