@@ -13,7 +13,7 @@ class MazeApp:
         self.mlx_ptr = self.wrapper.init()
 
         # 1. Calculate dynamic tile size to stay within screen limits
-        # We assume 1200x800 as maximum window size
+        # 1200x800 = maximum window size
         MAX_W, MAX_H = 1200, 800
         MIN_W = 500
         ui_height = 64
@@ -31,14 +31,14 @@ class MazeApp:
         self.win_height = (config["height"] * self.tile_size) + ui_height
 
         # Calculate Offset to center the maze
-        # if the window is wider than the maze
+        # when the window is wider than the maze
         self.offset_x = (self.win_width - maze_pixel_w) // 2
 
         self.win_ptr = self.wrapper.new_window(
             self.mlx_ptr, self.win_width, self.win_height, "A-Maze-ing"
         )
 
-        # 3. Setup Buffer for these exact dimensions == to draw in RAM
+        # Setup Buffer
         self.img_ptr = self.wrapper.lib.mlx_new_image(
             self.mlx_ptr, self.win_width, self.win_height
         )
@@ -55,13 +55,12 @@ class MazeApp:
         self.path_step = 0
         self.wall_color = 0xFFFFFF
         self.path_color = 0xFFFFFF
+        self.logo_color = 0xFFD700
 
     def _put_pixel_to_img(self, x: int, y: int, color: int) -> None:
         """Writes a pixel directly to the image buffer memory."""
         if 0 <= x < self.win_width and 0 <= y < self.win_height:
             # Calculate memory offset:
-            # (y * line_length) + (x * bits_per_pixel / 8)
-            # For most Linux systems, it's 4 bytes per pixel (BGRA)
             offset = (y * self.win_width * 4) + (x * 4)
             ctypes.c_uint32.from_address(self.img_data + offset).value = color
 
@@ -83,17 +82,20 @@ class MazeApp:
 
     def _change_colors(self) -> None:
         """Generates high-contrast colors for walls and the path."""
-        # Bright Neon Wall Color
         r = random.randint(100, 255)
         g = random.randint(100, 255)
         b = random.randint(100, 255)
         self.wall_color = (r << 16) | (g << 8) | b
 
-        # Bright Path Color (Different from walls)
         pr = random.randint(150, 255)
         pg = random.randint(150, 255)
         pb = 50  # Keep blue low to make it look yellow/orange/pink
         self.path_color = (pr << 16) | (pg << 8) | pb
+
+        lr = random.randint(150, 255)
+        lg = random.randint(150, 255)
+        lb = random.randint(150, 255)
+        self.logo_color = (lr << 16) | (lg << 8) | lb
 
     def _draw_path_node(self, coord: tuple[int, int], color: int) -> None:
         x_center = coord[0] * self.tile_size + (self.tile_size // 2)
@@ -106,8 +108,6 @@ class MazeApp:
 
     def _draw_rect_at(self,
                       cell_x: int, cell_y: int, size: int, color: int) -> None:
-        # DEBUG: See if these numbers look right in your terminal
-        print(f"Drawing path at: {cell_x}, {cell_y} with color {hex(color)}")
         center_x = (cell_x * self.tile_size) + (self.tile_size // 2)
         center_y = (cell_y * self.tile_size) + (self.tile_size // 2)
 
@@ -119,18 +119,16 @@ class MazeApp:
                 self._put_pixel_to_img(x, y, color)
 
     def _draw_legend_background(self) -> None:
-        """Draws a professional UI panel with status indicators."""
+        """Draws a UI panel with status indicators."""
         maze_bottom = self.maze.height * self.tile_size
         panel_height = 64
 
         # 1. DRAW THE PANEL BACKGROUND
-        # Filling the bottom area with a subtle charcoal grey
         for y in range(maze_bottom, maze_bottom + panel_height):
             for x in range(self.maze.width * self.tile_size):
                 self._put_pixel_to_img(x, y, 0x1A1A1A)
 
         # 2. DRAW THE SEPARATOR BORDER
-        # A thin line to separate the maze from the menu
         for x in range(self.maze.width * self.tile_size):
             self._put_pixel_to_img(x, maze_bottom, 0x444444)
 
@@ -176,12 +174,14 @@ class MazeApp:
         # clear the buffer and not the window
         ctypes.memset(self.img_data, 0, self.win_width * self.win_height * 4)
         # 1. Draw Entry/Exit
-        self._draw_rect(self.maze.entry, 0x00FF00)  # Green
-        self._draw_rect(self.maze.exit, 0xFF0000)  # Red
+        self._draw_rect(self.maze.entry, 0x00FF00)
+        self._draw_rect(self.maze.exit, 0xFF0000)
 
         # 3. Draw Walls in the buffer
         for y in range(self.maze.height):
             for x in range(self.maze.width):
+                if (x, y) in self.maze.closed:
+                    self._draw_rect((x, y), self.logo_color)
                 cell_walls = self.maze.walls[y][x]
                 px, py = x * self.tile_size, y * self.tile_size
 
@@ -214,13 +214,10 @@ class MazeApp:
                 curr_y += dy
                 dot_size = max(2, self.tile_size // 3)
                 self._draw_rect_at(curr_x, curr_y, dot_size, self.path_color)
-
-            # to stop at the end
             if self.path_step < len(path_str):
                 self.path_step += 1
 
         self._draw_legend_background()
-        # push the finished image to the window. (one frame at a time)
         self.wrapper.lib.mlx_put_image_to_window(self.mlx_ptr, self.win_ptr,
                                                  self.img_ptr, 0, 0)
         self._draw_legend_text()
@@ -235,13 +232,11 @@ class MazeApp:
                 self.win_ptr = None
             if self.mlx_ptr:
                 self.wrapper.lib.mlx_destroy_display(self.mlx_ptr)
-            # this is to avoid seg fault by IMMIDETELY exiting instead
-            # of returning to the event loop
             import os
             os._exit(0)
         elif keycode == 114:  # 'R' - Regenerate
             self.maze = self.gen.generate()
-            self.show_path = False  # Hide the path
+            self.show_path = False
             self.path_step = 0
         elif keycode == 112:  # 'P' - Toggle Path
             self.show_path = not self.show_path
@@ -258,7 +253,6 @@ class MazeApp:
         Uses CFUNCTYPE to pass a valid function pointer to C.
         """
         output_content = self.gen.build_output_sections(self.gen.generate())
-        # print(output_content)
         with open("output_maze.txt", 'w') as f:
             for line in output_content[0]:
                 f.write(line + "\n")
@@ -277,14 +271,11 @@ class MazeApp:
         )
 
         # Hook for the "X" Close Button (Event 17)
-        # We use the same callback function;
-        # the keycode passed will be different
         self.wrapper.lib.mlx_hook(
             self.win_ptr, 17, 0, self._key_callback, None
         )
 
-        # NEW: The Loop Hook (Animation)
-        # We create a simple wrapper that just calls render
+        # wrapper that calls render for animation
         loop_callback_type = ctypes.CFUNCTYPE(ctypes.c_int, ctypes.c_void_p)
 
         def _loop_cb(_arg: object) -> int:
