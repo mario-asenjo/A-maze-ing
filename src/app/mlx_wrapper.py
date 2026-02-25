@@ -5,8 +5,7 @@ from typing import Any, Optional
 
 class MLXWrapper:
     """
-    Professional ctypes wrapper for MiniLibX on Linux.
-    Ensures zero tracebacks by validating library loading.
+    ctypes wrapper for MiniLibX
     """
     def __init__(self, lib_path: str = "./minilibx/libmlx.so") -> None:
         if not os.path.exists(lib_path):
@@ -30,7 +29,6 @@ class MLXWrapper:
 
         self.lib.mlx_destroy_display.argtypes = [ctypes.c_void_p]
 
-        # mlx_key_hook(void *win_ptr, int (*funct_ptr)(), void *param)
         self.lib.mlx_key_hook.argtypes = [
             ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p
         ]
@@ -81,7 +79,6 @@ class MLXWrapper:
         self, mlx_ptr: Any, width: int, height: int, title: str
     ) -> Any:
         """Create a new graphical window."""
-        # title.encode is required for c_char_p
         return self.lib.mlx_new_window(
             mlx_ptr, width, height, title.encode('utf-8')
         )

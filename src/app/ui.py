@@ -31,17 +31,17 @@ class MazeApp:
         self.win_height = (config["height"] * self.tile_size) + ui_height
 
         # Calculate Offset to center the maze
-        # when the window is wider than the maze
         self.offset_x = (self.win_width - maze_pixel_w) // 2
 
         self.win_ptr = self.wrapper.new_window(
             self.mlx_ptr, self.win_width, self.win_height, "A-Maze-ing"
         )
 
-        # Setup Buffer
+        # Setup Buffer = where image object wil be held
         self.img_ptr = self.wrapper.lib.mlx_new_image(
             self.mlx_ptr, self.win_width, self.win_height
         )
+        # starting mem adress where pixels begins
         self.img_data = self.wrapper.lib.mlx_get_data_addr(
             self.img_ptr,
             ctypes.byref(ctypes.c_int()),
@@ -60,8 +60,9 @@ class MazeApp:
     def _put_pixel_to_img(self, x: int, y: int, color: int) -> None:
         """Writes a pixel directly to the image buffer memory."""
         if 0 <= x < self.win_width and 0 <= y < self.win_height:
-            # Calculate memory offset:
+            # Calculate memory offset between each pixel
             offset = (y * self.win_width * 4) + (x * 4)
+            # point to that place in memory and add the color
             ctypes.c_uint32.from_address(self.img_data + offset).value = color
 
     def _draw_line(self, x1: int, y1: int, x2: int, y2: int) -> None:
