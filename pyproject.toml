@@ -3,7 +3,7 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "mazegen"
+name = "mazegen-anais-mario"
 version = "0.1.0"
 description = "Reusable maze generator for A-Maze-ing."
 readme = "README.md"
@@ -23,9 +23,8 @@ dev = [
   "types-setuptools"
 ]
 
-[tool.setuptools.packages.find]
-where = ["."]
-include = ["mazegen*", "app*"]
+[tool.setuptools]
+py-modules = ["mazegen"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
