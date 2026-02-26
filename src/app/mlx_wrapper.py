@@ -29,6 +29,14 @@ class MLXWrapper:
 
         self.lib.mlx_destroy_display.argtypes = [ctypes.c_void_p]
 
+        self._loop_cb_type = ctypes.CFUNCTYPE(ctypes.c_int, ctypes.c_void_p)
+        self.lib.mlx_loop_hook.argtypes = [
+            ctypes.c_void_p,
+            self._loop_cb_type,
+            ctypes.c_void_p,
+        ]
+        self.lib.mlx_loop_hook.restype = ctypes.c_int
+
         self.lib.mlx_key_hook.argtypes = [
             ctypes.c_void_p, ctypes.c_void_p, ctypes.c_void_p
         ]

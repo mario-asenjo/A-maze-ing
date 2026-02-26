@@ -39,7 +39,7 @@ def parse_config(path: str) -> Config:
         missing = mandatory_keys - set(raw_data)
         if missing:
             raise ValueError(
-                f"Missing configuration keyrs: {', '.join(missing)}")
+                f"Missing configuration keys: {', '.join(missing)}")
 
         try:
             width = int(raw_data["WIDTH"])

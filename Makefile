@@ -26,7 +26,7 @@ install:
 	@echo "Rebuilding MiniLibX with -fPIC..."
 	# We pass CFLAGS directly to make to force -fPIC on every file
 	@make -C $(MLX_DIR) clean
-	@make -C $(MLX_DIR) CFLAGS="-O3 -g -fPIC -I. -I.. -I/usr/include"
+	@make -C $(MLX_DIR) CFLAGS=" -fPIC -I. -I.. -I/usr/include"
 	
 	@echo "Creating Shared Object for Python..."
 	@gcc -shared -o $(MLX_SO) -Wl,--whole-archive $(MLX_DIR)/libmlx.a -Wl,--no-whole-archive -lXext -lX11 -lm
