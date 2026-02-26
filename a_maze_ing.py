@@ -20,7 +20,8 @@ def main() -> None:
             height=config["height"],
             entry_c=config["entry"],
             exit_c=config["exit"],
-            perfect=config["perfect"]
+            perfect=config["perfect"],
+            algorithm=config["algorithm"]
         )
         app = MazeApp(gen, config)
         app.run()
