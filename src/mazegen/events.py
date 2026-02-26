@@ -8,11 +8,12 @@ to  animate generation without copying the full grid at every step.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Literal, Optional
+from typing import Literal
 
 from .maze import Coord
 
 StepKind = Literal["pattern_42", "carve", "backtrack", "loop_open", "done"]
+
 
 @dataclass(frozen=True, slots=True)
 class MazeStep:
@@ -27,6 +28,6 @@ class MazeStep:
     """
 
     kind: StepKind
-    a: Optional[Coord]
-    b: Optional[Coord]
+    a: Coord | None
+    b: Coord | None
     visited: int
