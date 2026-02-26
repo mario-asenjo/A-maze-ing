@@ -10,15 +10,16 @@ from __future__ import annotations
 
 from collections import deque
 import random
-from typing import Final, Optional, Deque
+from typing import Final, Optional, Deque, Callable
+from .events import MazeStep, StepKind
 
-from src.mazegen.errors import (
+from .errors import (
     MazeConfigError,
     MazeGenerationError,
     MazeUnsolvableError
 )
 
-from src.mazegen.maze import (
+from .maze import (
     ALL_WALLS,
     DIR_TO_DELTA,
     Coord,
@@ -31,7 +32,7 @@ from src.mazegen.maze import (
     iter_orthogonal_neighbors,
     set_wall_between, direction_between
 )
-from src.mazegen.patterns import compute_pattern_closed_cells
+from .patterns import compute_pattern_closed_cells
 
 
 class MazeGenerator:
@@ -50,6 +51,9 @@ class MazeGenerator:
     _used_42: bool
     _warnings: list[str]
     _include_42: bool
+    _step_callback: Optional[Callable[[MazeStep], None]]
+    _step_every: int
+    _step_counter: int
 
     def __init__(
             self,
@@ -104,10 +108,13 @@ class MazeGenerator:
         self._perfect = perfect
         self._rng = random.Random(seed)
 
-        # This will be implemented in Phase 3 of project flowchart.
         self._used_42 = False
         self._warnings = []
         self._include_42 = include_42
+
+        self._step_callback = None
+        self._step_every = 1
+        self._step_counter = 0
 
     @property
     def used_42(self) -> bool:
@@ -119,7 +126,12 @@ class MazeGenerator:
         """Return warnings produced during the last generation attempt."""
         return list(self._warnings)
 
-    def generate(self) -> Maze:
+    def generate(
+            self,
+            *,
+            step_callback: Optional[Callable[[MazeStep], None]] = None,
+            step_every: int = 1
+    ) -> Maze:
         """
         Generate and return a new maze.
 
@@ -129,6 +141,12 @@ class MazeGenerator:
         Raises:
             MazeGenerationError: If generation fails unexpectedly.
         """
+
+        if step_every <= 0:
+            raise MazeConfigError("step_every must be >= 1.")
+        self._step_callback = step_callback
+        self._step_every = step_every
+        self._step_counter = 0
 
         self._warnings = []
         self._used_42 = False
@@ -151,6 +169,7 @@ class MazeGenerator:
                 )
             else:
                 closed = maybe_closed
+                self._emit("pattern_42", None, None, visited=0)
                 self._used_42 = True
                 for x, y in closed:
                     walls[y][x] = ALL_WALLS
@@ -181,7 +200,8 @@ class MazeGenerator:
                     candidates.append(neighbor)
 
             if not candidates:
-                stack.pop()
+                popped: Coord = stack.pop()
+                self._emit("backtrack", popped, None, visited=len(visited))
                 continue
 
             nxt_candidate = self._rng.choice(candidates)
@@ -192,6 +212,12 @@ class MazeGenerator:
                 closed=False
             )
             visited.add(nxt_candidate)
+            self._emit(
+                "carve",
+                (cell_x, cell_y),
+                nxt_candidate,
+                visited=len(visited)
+            )
             stack.append(nxt_candidate)
 
         if not self._perfect:
@@ -206,6 +232,7 @@ class MazeGenerator:
             raise MazeGenerationError(
                 "Not all cells were reached during generation of Maze."
             )
+        self._emit("done", self._entry, self._exit, visited=len(visited))
 
         return Maze(
             width=self._width,
@@ -378,9 +405,6 @@ class MazeGenerator:
     def _add_loops(self, walls: list[list[int]], closed: set[Coord]) -> None:
         """
 
-        :param walls:
-        :param closed:
-        :return:
         """
 
         # Minimal number of extra walls, proportional to walkable size.
@@ -416,6 +440,12 @@ class MazeGenerator:
                         # if we have created a 3x3 open area, we revert
                         if not self._creates_open_3x3(walls, closed, a, b):
                             extra_edges -= 1
+                            self._emit(
+                                "loop_open",
+                                a,
+                                b,
+                                visited=walkable - extra_edges
+                            )
                         else:
                             set_wall_between(walls, a, b, closed=True)
 
@@ -424,3 +454,24 @@ class MazeGenerator:
                 "Could not add requested loops without "
                 " violating 3x3-open constraints."
             )
+
+    def _emit(
+            self,
+            kind: StepKind,
+            a: Coord | None,
+            b: Coord | None,
+            visited: int
+    ) -> None:
+        if self._step_callback:
+            if kind in ("done", "pattern_42"):
+                self._step_callback(MazeStep(kind, a, b, visited))
+                return
+            self._step_counter += 1
+            if (self._step_every <= 1 or
+                    (self._step_counter % self._step_every) == 0):
+                self._step_callback(MazeStep(
+                    kind=kind,
+                    a=a,
+                    b=b,
+                    visited=visited
+                ))
