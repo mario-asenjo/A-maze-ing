@@ -1,5 +1,5 @@
 import os
-from typing import TypedDict, Tuple, Set
+from typing import TypedDict, Tuple, Set, Literal
 
 
 class Config(TypedDict):
@@ -9,6 +9,7 @@ class Config(TypedDict):
     exit: Tuple[int, int]
     output_file: str
     perfect: bool
+    algorithm: Literal["dfs", "prim", "kruskal"]
 
 
 def parse_config(path: str) -> Config:
@@ -72,13 +73,16 @@ def parse_config(path: str) -> Config:
             else:
                 perfect = False
 
+            algorithm = raw_data.get("ALGORITHM", "dfs").lower()
+
             return {
                         "width": width,
                         "height": height,
                         "entry": entry,
                         "exit": exit_coord,
                         "output_file": raw_data["OUTPUT_FILE"],
-                        "perfect": perfect
+                        "perfect": perfect,
+                        "algorithm": algorithm
                     }
 
         except ValueError as e:

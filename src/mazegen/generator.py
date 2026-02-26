@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from collections import deque
 import random
-from typing import Final, Optional, Deque, Callable
+from typing import Final, Optional, Deque, Callable, Literal
 from .events import MazeStep, StepKind
 
 from .errors import (
@@ -34,6 +34,7 @@ from .maze import (
 )
 from .patterns import compute_pattern_closed_cells
 
+Algorithm = Literal["dfs", "prim", "kruskal"]
 
 class MazeGenerator:
     """
@@ -54,6 +55,7 @@ class MazeGenerator:
     _step_callback: Optional[Callable[[MazeStep], None]]
     _step_every: int
     _step_counter: int
+    _algorithm: Algorithm
 
     def __init__(
             self,
@@ -64,7 +66,8 @@ class MazeGenerator:
             exit_c: Coord,
             perfect: bool,
             seed: Optional[int] = None,
-            include_42: bool = True
+            include_42: bool = True,
+            algorithm: Algorithm = "dfs"
     ) -> None:
         """
         Initialize the generator.
@@ -115,6 +118,10 @@ class MazeGenerator:
         self._step_callback = None
         self._step_every = 1
         self._step_counter = 0
+
+        if algorithm not in ("dfs", "prim", "kruskal"):
+            raise MazeConfigError(f"{algorithm} is not a valid algorithm. (dfs, prims, kruskal).")
+        self._algorithm = algorithm
 
     @property
     def used_42(self) -> bool:
@@ -179,46 +186,7 @@ class MazeGenerator:
         if start in closed:
             raise MazeGenerationError("Entry cannot be in a closed cell.")
 
-        visited: set[Coord] = {start}
-        stack: list[Coord] = [start]
-
-        # DFS carve
-        while stack:
-            cell_x, cell_y = stack[-1]
-
-            candidates: list[Coord] = []
-            for _d, (next_x, next_y) in iter_orthogonal_neighbors(
-                    cell_x,
-                    cell_y,
-                    self._width,
-                    self._height
-            ):
-                neighbor = (next_x, next_y)
-                if neighbor in closed:
-                    continue
-                if neighbor not in visited:
-                    candidates.append(neighbor)
-
-            if not candidates:
-                popped: Coord = stack.pop()
-                self._emit("backtrack", popped, None, visited=len(visited))
-                continue
-
-            nxt_candidate = self._rng.choice(candidates)
-            set_wall_between(
-                walls,
-                (cell_x, cell_y),
-                nxt_candidate,
-                closed=False
-            )
-            visited.add(nxt_candidate)
-            self._emit(
-                "carve",
-                (cell_x, cell_y),
-                nxt_candidate,
-                visited=len(visited)
-            )
-            stack.append(nxt_candidate)
+        visited = self._carve_by_algorithm(walls, closed, start)
 
         if not self._perfect:
             self._add_loops(walls, closed)
@@ -475,3 +443,172 @@ class MazeGenerator:
                     b=b,
                     visited=visited
                 ))
+
+    def _carve_by_algorithm(
+            self,
+            walls: list[list[int]],
+            closed: set[Coord],
+            start: Coord
+    ) -> set[Coord]:
+        maze: set[Coord]
+        if self._algorithm == "dfs":
+            maze = self._carve_dfs(walls, closed, start)
+        elif self._algorithm == "prim":
+            maze = self._carve_prim(walls, closed, start)
+        else:
+            maze = self._carve_kruskal(walls, closed)
+        return maze
+
+    def _carve_dfs(self, walls, closed, start) -> set[Coord]:
+        visited: set[Coord] = {start}
+        stack: list[Coord] = [start]
+
+        # DFS carve
+        while stack:
+            cell_x, cell_y = stack[-1]
+
+            candidates: list[Coord] = []
+            for _d, (next_x, next_y) in iter_orthogonal_neighbors(
+                    cell_x,
+                    cell_y,
+                    self._width,
+                    self._height
+            ):
+                neighbor = (next_x, next_y)
+                if neighbor in closed:
+                    continue
+                if neighbor not in visited:
+                    candidates.append(neighbor)
+
+            if not candidates:
+                popped: Coord = stack.pop()
+                self._emit("backtrack", popped, None, visited=len(visited))
+                continue
+
+            nxt_candidate = self._rng.choice(candidates)
+            set_wall_between(
+                walls,
+                (cell_x, cell_y),
+                nxt_candidate,
+                closed=False
+            )
+            visited.add(nxt_candidate)
+            self._emit(
+                "carve",
+                (cell_x, cell_y),
+                nxt_candidate,
+                visited=len(visited)
+            )
+            stack.append(nxt_candidate)
+        return visited
+
+    def _carve_prim(
+            self,
+            walls: list[list[int]],
+            closed: set[Coord],
+            start: Coord
+    ) -> set[Coord]:
+        visited: set[Coord] = {start}
+
+        # frontier edges: (from_cell, to_cell)
+        frontier: list[tuple[Coord, Coord]] = []
+
+        def push_frontier(c: Coord) -> None:
+            x, y = c
+            for _d, (nx, ny) in iter_orthogonal_neighbors(
+                x,
+                y,
+                self._width,
+                self._height
+            ):
+                to_cell = (nx, ny)
+                if to_cell not in closed:
+                    frontier.append((c, to_cell))
+
+        push_frontier(start)
+
+        while frontier:
+            # remove chosen edge
+            i = self._rng.randrange(len(frontier))
+            a, b = frontier[i]
+            frontier[i] = frontier[-1]
+            frontier.pop()
+
+            if b not in visited:
+                set_wall_between(walls, a, b, closed=False)
+                visited.add(b)
+                self._emit("carve", a, b, visited=len(visited))
+                push_frontier(b)
+        return visited
+
+    class _DSU:
+        def __init__(self) -> None:
+            self.parent: dict[Coord, Coord] = {}
+            self.rank: dict[Coord, int] = {}
+
+        def add(self, x: Coord) -> None:
+            self.parent[x] = x
+            self.rank[x] = 0
+
+        def find(self, x: Coord) -> Coord:
+            parent = self.parent[x]
+            if parent != x:
+                self.parent[x] = self.find(parent)
+            return self.parent[x]
+
+        def union(self, a: Coord, b: Coord) -> bool:
+            r_a = self.find(a)
+            r_b = self.find(b)
+            if r_a == r_b:
+                return False
+            if self.rank[r_a] < self.rank[r_b]:
+                r_a, r_b = r_b, r_a
+            self.parent[r_b] = r_a
+            if self.rank[r_a] == self.rank[r_b]:
+                self.rank[r_a] += 1
+            return True
+
+    def _carve_kruskal(
+            self,
+            walls: list[list[int]],
+            closed: set[Coord]
+    ) -> set[Coord]:
+        dsu: MazeGenerator._DSU = MazeGenerator._DSU()
+        nodes: list[Coord] = []
+
+        for y in range(self._height):
+            for x in range(self._width):
+                coord = (x, y)
+                if coord not in closed:
+                    dsu.add(coord)
+                    nodes.append(coord)
+
+        edges: list[tuple[Coord, Coord]] = []
+        for y in range(self._height):
+            for x in range(self._width):
+                a = (x, y)
+                if a not in closed:
+                    if x + 1 < self._width:
+                        b = (x + 1, y)
+                        if b not in closed:
+                            edges.append((a, b))
+                    if y + 1 < self._height:
+                        b = (x, y + 1)
+                        if b not in closed:
+                            edges.append((a, b))
+
+        self._rng.shuffle(edges)
+
+        opened = 0
+        target_edges = len(nodes) - 1  # spanning tree
+        for a, b in edges:
+            if dsu.union(a, b):
+                set_wall_between(walls, a, b, closed=False)
+                opened += 1
+                #  "visited" doesn't work here, we use "opened" as progress keeper.
+                self._emit("carve", a,  b, visited=min(len(nodes), opened + 1))
+                if opened >= target_edges:
+                    break
+
+        #  "visited": all nodes reachable if spanning tree has completed
+        return set(nodes)
