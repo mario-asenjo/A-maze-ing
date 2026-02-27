@@ -3,9 +3,14 @@ import random
 from src.app.config_parser import Config
 from src.app.mlx_wrapper import MLXWrapper
 from typing import Any
-from src.mazegen.events import MazeStep
-from src.mazegen.generator import MazeGenerator
-from src.mazegen.maze import has_wall, ALL_WALLS, set_wall_between
+from mazegen import MazeStep
+from mazegen import MazeGenerator
+from mazegen import has_wall, ALL_WALLS, set_wall_between
+
+
+# 1200x800 = maximum window size
+MAX_W, MAX_H = 1200, 1200
+MIN_W = 500
 
 
 class MazeApp:
@@ -14,9 +19,6 @@ class MazeApp:
         self.mlx_ptr = self.wrapper.init()
 
         # 1. Calculate dynamic tile size to stay within screen limits
-        # 1200x800 = maximum window size
-        MAX_W, MAX_H = 1200, 1200
-        MIN_W = 500
         ui_height = 64
         # 2. Calculate Tile Size
         tile_w = MAX_W // config["width"]

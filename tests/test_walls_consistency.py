@@ -6,8 +6,8 @@ from __future__ import annotations
 
 import pytest
 
-from src.mazegen.errors import MazeConfigError
-from src.mazegen.maze import (
+from mazegen import MazeConfigError
+from mazegen import (
     ALL_WALLS,
     assert_neighbor_wall_consistency,
     has_wall,

@@ -4,8 +4,8 @@
 
 from __future__ import annotations
 
-from src.mazegen import MazeGenerator
-from src.mazegen.maze import has_wall, Maze
+from mazegen import MazeGenerator
+from mazegen import has_wall, Maze
 
 
 def _is_3x3_fully_open(maze: Maze, x0: int, y0: int) -> bool:

@@ -1,6 +1,4 @@
-from typing import Literal
-
-from src.mazegen.generator import MazeGenerator
+from mazegen.generator import MazeGenerator
 
 def test_same_seed_same_maze_for_each_algorith() -> None:
     for algo in ["dfs", "prim", "kruskal"]:

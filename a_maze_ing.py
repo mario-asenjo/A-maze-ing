@@ -1,8 +1,7 @@
 import sys
 from src import parse_config
 from src import MazeApp
-from src import MazeGenerator
-from src import MazeError
+from mazegen import MazeGenerator, MazeError
 
 
 def main() -> None:
