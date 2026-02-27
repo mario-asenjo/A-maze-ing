@@ -1,63 +1,195 @@
-*This project has been created as part of the 42 curriculum by acaire-d, MARIO.*
+*This project has been created as part of the 42 curriculum by acaire-d, masenjo.*
 
 # A-Maze-ing
-
 A robust, graphical maze generator and solver built in Python using the MiniLibX library.
 
+---
+
 ## Description
+A-Maze-ing is a configurable and interactive maze generator developed in Python.
 
-The goal of this project is to create a deterministic maze generator that produces "perfect" mazes—mazes where any two cells are connected by exactly one path. The application includes a graphical user interface (GUI) to visualize the generation process, an animated solver, and a custom branding feature that integrates a "42" pattern into the maze layout.
+The project features:
 
-## Instructions
+-   Perfect and non-perfect maze generation
+-   Multiple algorithms (DFS, Prim, Kruskal)
+-   42 pattern embedding
+-   Animated maze generation via event system
+-   BFS shortest-path solver
+-   Hexadecimal export format
+-   Fully reusable pip-installable module
+-   Strict typing and test coverage
 
-### Prerequisites
+The architecture cleanly separates:
 
-As this project uses **MiniLibX (Linux)**, ensure you are on a Linux environment with X11 development libraries installed.
+-   `mazegen/` → reusable core module
+-   `src/app/` → graphical interface (MiniLibX)
+-   CLI entry point → `a_maze_ing.py`
+---
 
-### Installation
+# Instructions
 
-We use a `Makefile` to automate the setup of the Python virtual environment and the compilation of the MLX shared library:
+## Instalation & Setup
+This project includes a fully automated Makefile.
 
-```bash
-make install
-
-```
-
-*Note: This command handles the creation of a `.venv` and builds the `libmlx.so` required for Python to communicate with C.*
-
-### Execution
-
-To run the generator with a configuration file:
-
-```bash
-make run
-
-```
-
-To run tests or linting:
+### Full Setup (Recommended)
 
 ```bash
-make test
-make lint
-
+  make install
 ```
+
+This command:
+
+1. Creates or updates the virtual environment (`.venv`)
+2. Installs the project in editable mode with dev dependencies
+3. Clones MiniLibX.
+4. Configures and rebuilds MiniLibX with `-fPIC`
+5. Builds `libmlx.so` for Python compatibility
+
+After this, everything is ready to run.
+
+---
+
+## Running the Application
+
+```bash
+  make run
+```
+
+This is equivalent to:
+```bash
+  PYTHONPATH=src LD_LIBRARY_PATH=minilibx .venv/bin/python3 a_maze_ing.py config.txt
+```
+
+---
+
+## Debug Mode
+
+```bash
+  make debug
+```
+
+Runs the application with Python debugger (pdb).
+
+---
+
+### Code Quality & Testing
+
+Linting:
+
+```bash
+  make lint
+```
+
+Strict Linting:
+
+```bash
+  make lint-strict
+```
+
+Run tests:
+```bash
+  make test
+```
+
+---
+
+## Build Reusable Package
+
+```bash
+  make build
+```
+
+Creates:
+- dist/\*.whl
+- dist/\*.tar.gz
+
+Install locally:
+```bash
+  pip install dist/mazegen_anais_mario-1.0.0-py3-none-any.whl
+```
+
+---
+
+## Cleaning the Project
+
+```bash
+  make clean
+```
+
+Removes:
+- dist/
+- buidl/
+- caches
+- MiniLibX clone
+
+---
 
 ## Config File Structure
 
 The project uses a `config.txt` file (parsed via `pyproject.toml` and internal parsers) with the following format:
 
-* **Width/Height**: Integer dimensions of the maze grid.
-* **Entry/Exit**: Coordinates `(x, y)` for the start and end points.
-* **Seed**: (Optional) An integer to ensure reproducible maze generation.
+Example:
 
-## Technical Choices
+```text
+    WIDTH=20
+    HEIGHT=20
+    ENTRY=1,5
+    EXIT=9,19
+    OUTPUT_FILE=maze.txt
+    PERFECT=True
+    ALGORITHM=dfs
+    SEED=42
+```
 
-### Maze Generation Algorithm: Iterative DFS
+Mandatory:
 
-We chose the **Iterative Depth-First Search (Recursive Backtracker)** algorithm.
+```text
+    WIDTH
+    HEIGHT
+    ENTRY
+    EXIT
+    OUTPUT_FILE
+    PERFECT
+```
 
-* **Why this algorithm?** MARIO
-* **Implementation**: MARIO
+Optional:
+
+```text
+    ALGORITHM (dfs \| prim \| kruskal)
+    SEED
+```
+
+---
+
+## Maze Generation Algorithms (Bonus)
+Supported algorithms:
+
+### DFS (Recursive Backtracker)
+
+-   Fast
+-   Deterministic with seed
+-   Naturally produces perfect mazes
+
+### Prim
+
+-   Randomized MST-based generation
+-   More uniform expansion
+
+### Kruskal
+
+-   Disjoint-set based MST algorithm
+-   Global randomized wall removal
+
+All share the same Maze data model.
+
+---
+
+## 42 Pattern
+
+- If maze size ≥ 7x5, a 42 pattern is embedded as closed cells.
+- If size is too small, generation continues and a warning is stored.
+
+---
 
 ### Rendering: The Image Buffer Strategy
 

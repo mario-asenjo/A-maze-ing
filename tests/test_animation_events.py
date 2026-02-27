@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 from typing import List
-from src.mazegen.events import MazeStep
-from src.mazegen.generator import MazeGenerator
+from mazegen import MazeStep
+from mazegen.generator import MazeGenerator
 
 
 def test_generate_emits_events() -> None:

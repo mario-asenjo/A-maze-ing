@@ -1,7 +1,7 @@
 """
 This test proves the blocking of the cells in 42 pattern inside the maze.
 """
-from src.mazegen import MazeGenerator, Maze, ALL_WALLS
+from mazegen import MazeGenerator, Maze, ALL_WALLS
 
 
 def test_42_present_when_size_allows() -> None:

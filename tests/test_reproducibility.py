@@ -8,8 +8,8 @@ Will assert in future that different seed generates different walls.
 
 from __future__ import annotations
 
-from src.mazegen import Maze
-from src.mazegen.generator import MazeGenerator
+from mazegen import Maze
+from mazegen.generator import MazeGenerator
 
 
 def test_same_seed_produces_same_walls() -> None:

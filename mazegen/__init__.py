@@ -32,6 +32,7 @@ from .maze import (
 
 from .generator import MazeGenerator
 
+from .events import MazeStep
 
 __version__ = "1.0.0"
 __author__ = "Mario Asenjo Pérez"
@@ -57,5 +58,6 @@ __all__ = [
     "neighbor_of",
     "set_wall",
     "set_wall_between",
-    "MazeGenerator"
+    "MazeGenerator",
+    "MazeStep"
 ]

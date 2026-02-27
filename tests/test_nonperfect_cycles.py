@@ -4,8 +4,8 @@
 
 from __future__ import annotations
 
-from src.mazegen import MazeGenerator
-from src.mazegen.maze import has_wall, Maze
+from mazegen import MazeGenerator
+from mazegen import has_wall, Maze
 
 
 def _count_open_edges(maze: Maze) -> int:
